@@ -21,3 +21,15 @@ Each challenge's data, details, and specifications are stored as static resource
 ### Ranking and Streaks
 
 As users complete challenges, points are awarded to their accounts. Every consecutive day in which a challenge is solved awards a growing score multiplier. Breaking a steak resets the score multiplier. Scores and streaks are also stored persistently in the application's backend database.
+
+### Terminal
+
+When solving challenges, users are provided with a terminal or command interface with a fixed set of built-in commands. (Commands TBA)
+
+### Scripts
+
+When solving challenges, users are provided with code editors to write scripts for automated tasks. The default scripting language provided is python, with the possibility of javascript being added in the future.
+
+### WebView
+
+When solving challenges, users are also provided with a web browser which they can use to access sites within the challenge using a GUI. This could use an `<iframe>` tag in the frontend, with most sites being restricted by default. Each challenge specification will also come with a list of `allowed_sites` as a whitelist.
