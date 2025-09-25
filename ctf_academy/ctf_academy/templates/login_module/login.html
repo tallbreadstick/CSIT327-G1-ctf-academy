@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Academy Login</title>
+  <link rel="stylesheet" href="/ctf_academy/static/login_module/login.css">
+</head>
+<body>
+  <div class="container">
+    <img src="/ctf_academy/static/images/logo.png" alt="Academy Logo" class="logo">
+    <h2>Academy Login</h2>
+    <form id="loginForm">
+      <div class="form-group">
+        <label>Email</label>
+        <input type="text" id="email" placeholder="Enter your email" required />
+      </div>
+      <div class="form-group">
+        <label>Password</label>
+        <input type="password" id="password" placeholder="Enter your password" required />
+      </div>
+      <button type="submit">Login</button>
+      <p id="message"></p>
+    </form>
+    <p class="register-link">
+      Don’t have an account? 
+      <a href="/ctf_academy/templates/register_module/registration.html">Register here</a>
+    </p>
+  </div>
+  <script src="/ctf_academy/static/login_module/login.js"></script>
+</body>
+</html>
