@@ -1,0 +1,21 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Login</title>
+</head>
+<body>
+    <h1>Login</h1>
+
+    {% if form.errors %}
+        <p style="color: red;">Invalid username or password. Please try again.</p>
+    {% endif %}
+
+    <form method="post">
+        {% csrf_token %}
+        {{ form.as_p }}
+        <button type="submit">Login</button>
+    </form>
+
+    <p>Don’t have an account? <a href="{% url 'register' %}">Register here</a></p>
+</body>
+</html>
