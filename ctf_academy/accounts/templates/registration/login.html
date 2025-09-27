@@ -5,6 +5,15 @@
 </head>
 <body>
     <h1>Login</h1>
+    
+    {% if messages %}
+  <ul class="messages">
+    {% for message in messages %}
+      <li>{{ message }}</li>
+    {% endfor %}
+  </ul>
+{% endif %}
+
 
     {% if form.errors %}
         <p style="color: red;">Invalid username or password. Please try again.</p>
@@ -15,6 +24,7 @@
         {{ form.as_p }}
         <button type="submit">Login</button>
     </form>
+    
 
     <p>Don’t have an account? <a href="{% url 'register' %}">Register here</a></p>
 </body>
