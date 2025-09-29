@@ -1,18 +1,49 @@
 from django.shortcuts import render, redirect
-from django.contrib.auth.forms import UserCreationForm
+from django import forms
+from django.contrib.auth import get_user_model
 from django.contrib.auth import authenticate, login as auth_login, logout as auth_logout
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
 
+class CustomUserCreationForm(forms.ModelForm):
+    password1 = forms.CharField(label="Password", widget=forms.PasswordInput)
+    password2 = forms.CharField(label="Confirm Password", widget=forms.PasswordInput)
+
+    class Meta:
+        model = get_user_model()
+        fields = ("username", "email")
+
+    def clean_email(self):
+        email = self.cleaned_data.get("email")
+        if get_user_model().objects.filter(email=email).exists():
+            raise forms.ValidationError("A user with that email already exists.")
+        return email
+
+    def clean(self):
+        cleaned = super().clean()
+        p1 = cleaned.get("password1")
+        p2 = cleaned.get("password2")
+        if p1 and p2 and p1 != p2:
+            self.add_error("password2", "Passwords do not match")
+        return cleaned
+
+    def save(self, commit=True):
+        user = super().save(commit=False)
+        user.set_password(self.cleaned_data["password1"])
+        if commit:
+            user.save()
+        return user
+
+
 def register(request):
     """Registration page -> after successful registration redirect to login."""
     if request.method == "POST":
-        form = UserCreationForm(request.POST)
+        form = CustomUserCreationForm(request.POST)
         if form.is_valid():
             form.save()
             return redirect("login")   # uses the named 'login' route (django.contrib.auth)
     else:
-        form = UserCreationForm()
+        form = CustomUserCreationForm()
     return render(request, "registration/registration.html", {"form": form})
 
 

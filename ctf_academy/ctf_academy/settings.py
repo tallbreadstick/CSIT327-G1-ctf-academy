@@ -11,6 +11,8 @@ https://docs.djangoproject.com/en/5.2/ref/settings/
 """
 
 from pathlib import Path
+import os
+from dotenv import load_dotenv
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -73,15 +75,37 @@ TEMPLATES = [
 WSGI_APPLICATION = 'ctf_academy.wsgi.application'
 
 
-# Database
+# Load environment variables from .env if present
+load_dotenv()
+
+# Database (Supabase Postgres)
 # https://docs.djangoproject.com/en/5.2/ref/settings/#databases
+
+USE_DIRECT_DB = os.getenv('DB_USE_DIRECT', '0') in ('1', 'true', 'True')
 
 DATABASES = {
     'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'db.sqlite3',
+        'ENGINE': 'django.db.backends.postgresql',
+        # Prefer example's lowercase envs; fallback to POSTGRES_*; final defaults
+        'NAME': os.getenv('dbname', os.getenv('POSTGRES_DB', 'postgres')),
+        'USER': os.getenv('user', os.getenv('POSTGRES_USER', 'postgres')),
+        'PASSWORD': os.getenv('password', os.getenv('POSTGRES_PASSWORD', '')),
+        'HOST': os.getenv('host', os.getenv('POSTGRES_HOST', '127.0.0.1')),
+        # Default to Supabase transaction pooler (6543) unless DB_USE_DIRECT is set
+        'PORT': os.getenv('port') or (os.getenv('POSTGRES_PORT') or ('5432' if USE_DIRECT_DB else '6543')),
+        'OPTIONS': {
+            'sslmode': os.getenv('sslmode', 'require'),
+            # Reasonable defaults; tweak as needed
+            'connect_timeout': int(os.getenv('PGCONNECT_TIMEOUT', '10')),
+            'options': os.getenv('PG_OPTIONS', '-c statement_timeout=60000'),
+        },
+        # Pooler compatibility
+        'DISABLE_SERVER_SIDE_CURSORS': True,
     }
 }
+
+# Short-lived connections for pooler
+CONN_MAX_AGE = 0
 
 
 # Password validation
@@ -118,6 +142,17 @@ USE_TZ = True
 LOGIN_URL = '/dashboard/login/'
 LOGOUT_REDIRECT_URL = '/dashboard/login/'
 LOGIN_REDIRECT_URL = '/dashboard/'   # after successful login
+
+# Use custom user model
+AUTH_USER_MODEL = 'accounts.User'
+
+# Prefer Argon2 for password hashing
+PASSWORD_HASHERS = [
+    'django.contrib.auth.hashers.Argon2PasswordHasher',
+    'django.contrib.auth.hashers.PBKDF2PasswordHasher',
+    'django.contrib.auth.hashers.PBKDF2SHA1PasswordHasher',
+    'django.contrib.auth.hashers.BCryptSHA256PasswordHasher',
+]
 
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/5.2/howto/static-files/
