@@ -34,13 +34,13 @@ document.getElementById("loginForm").addEventListener("submit", function(e) {
     message.style.color = "green";
     message.textContent = "Welcome Admin! Redirecting to Admin Dashboard...";
     setTimeout(() => {
-      window.location.href = "/admin_dashboard.html"; // Admin dashboard
+      window.location.href = "/ctf_academy/templates/dashboard_module/admin_dashboard.html"; // Admin dashboard
     }, 1500);
   } else if (user.role === "User") {
     message.style.color = "green";
     message.textContent = "Welcome User! Redirecting to User Dashboard...";
     setTimeout(() => {
-      window.location.href = "/user_dashboard.html"; // User dashboard
+      window.location.href = "/ctf_academy/templates/dashboard_module/user_dashboard.html"; // User dashboard
     }, 1500);
   } else {
     // num3: Successful Authentication fallback
