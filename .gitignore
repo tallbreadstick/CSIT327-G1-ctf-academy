@@ -1,0 +1,90 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# C extensions
+*.so
+
+# Distribution / packaging
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# Virtual environments
+.venv/
+venv/
+env/
+ENV/
+.venv.bak/
+pythonenv*/
+
+# PyInstaller
+*.manifest
+*.spec
+
+# Unit test / coverage reports
+.coverage
+.coverage.*
+.cache/
+nosetests.xml
+coverage.xml
+*.cover
+*.py,cover
+.hypothesis/
+.pytest_cache/
+
+# Django stuff
+*.log
+local_settings.py
+db.sqlite3
+media/
+staticfiles/
+
+# IDE/editor
+.vscode/
+.idea/
+*.swp
+*.swo
+.vscode/*
+
+# MyPy / type checking
+.mypy_cache/
+.dmypy.json
+.dmypy/
+
+# Pylint/Flake8
+.pylint.d/
+.pyre/
+.pytype/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# dotenv
+.env
+.env.*
+
+# Poetry / pip-tools / pipenv lock files (optional to ignore)
+poetry.lock
+Pipfile.lock
+requirements*.txt.bak
+
+# Node (if present for frontend assets)
+node_modules/
