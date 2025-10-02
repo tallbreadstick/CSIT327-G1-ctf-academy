@@ -1,0 +1,111 @@
+{% load static tailwind_tags %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>CTF Academy - About</title>
+    <link rel="icon" type="image/png" href="{% static 'accounts/images/logo.png' %}">
+    {% tailwind_css %}
+
+    <style>
+        /* Custom keyframes for subtle background pulse and slide-in */
+        @keyframes float {
+            0%, 100% { transform: translateY(0px); }
+            50% { transform: translateY(-6px); }
+        }
+        @keyframes fadeInUp {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .fade-up { animation: fadeInUp 0.8s ease-out forwards; }
+        .floaty { animation: float 4s ease-in-out infinite; }
+        /* Gradient glow text */
+        .glow-text {
+            background: linear-gradient(90deg, #ec4899, #f9a8d4, #ffffff);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            animation: bg-pan 6s linear infinite;
+            background-size: 200% auto;
+        }
+        @keyframes bg-pan {
+            0% { background-position: 0% center; }
+            100% { background-position: 200% center; }
+        }
+    </style>
+</head>
+<body class="bg-gray-900 text-white flex flex-col min-h-screen relative overflow-hidden">
+
+    <!-- BACKGROUND EFFECT -->
+    <div class="absolute inset-0 opacity-10 bg-[radial-gradient(circle_at_center,#ec4899,transparent_70%)] animate-pulse"></div>
+    <div class="absolute top-0 left-0 w-full h-full bg-[linear-gradient(45deg,#fff1,transparent_60%)]"></div>
+
+    <!-- NAVBAR -->
+    <nav class="bg-gray-800/80 backdrop-blur border-b border-gray-700 z-10">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex items-center justify-between h-16">
+                <!-- Logo -->
+                <div class="flex-shrink-0 flex items-center space-x-2">
+                    <img src="{% static 'accounts/images/logo.png' %}" alt="Logo" class="h-8 w-8">
+                    <span class="text-xl font-bold">CTF Academy</span>
+                </div>
+                <!-- Menu -->
+                <div class="hidden md:flex space-x-8">
+                    <a href="/" class="text-white hover:text-pink-400 transition">Home</a>
+                    <a href="/about" class="text-pink-400 font-semibold">About</a>
+                    <a href="/challenges" class="text-white hover:text-pink-400 transition">Challenges</a>
+                    <a href="/leaderboards" class="text-white hover:text-pink-400 transition">Leaderboards</a>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- MAIN CONTENT -->
+    <main class="flex-grow flex flex-col items-center justify-center text-left px-6 py-12 max-w-4xl mx-auto relative z-10">
+        <h1 class="text-5xl font-extrabold mb-6 glow-text text-center fade-up">
+            About CTF Academy
+        </h1>
+
+        <div class="space-y-6 text-lg text-gray-300">
+            <p class="fade-up" style="animation-delay: 0.2s;">
+                CTF Academy was built on the idea that cybersecurity isn’t just about throwing payloads at a system until something breaks. 
+                Real security work demands logical thinking — understanding structures, dependencies, and the way layers of defense fit together. 
+                That’s the focus here.
+            </p>
+
+            <p class="fade-up" style="animation-delay: 0.4s;">
+                Our challenges don’t simulate the chaos of an entire operating system or a raw network. 
+                Instead, they take place in a controlled, sandboxed environment where the noise is stripped away. 
+                You get to focus on reasoning through topologies, identifying weak points in layered defenses, 
+                and applying strategies step by step — the kind of thinking that matters in real-world offensive security.
+            </p>
+
+            <p class="fade-up" style="animation-delay: 0.6s;">
+                We took inspiration from platforms like LeetCode, which prove every day that regular practice sharpens skill 
+                more than any lecture, video, or book. CTF Academy takes that same model and applies it to security: 
+                small, consistent exercises that train your problem-solving muscle.
+            </p>
+
+            <p class="fade-up" style="animation-delay: 0.8s;">
+                The platform also comes from what we’ve seen at our own university, 
+                <span class="text-white font-semibold">Cebu Institute of Technology – University</span>. 
+                Programming foundations often get a lot of attention, while networking and system-level concepts remain underexplored. 
+                CTF Academy is our way of bridging that gap — giving students a steady, hands-on path into offensive security 
+                through structured challenges, leaderboards, and streaks that reward persistence.
+            </p>
+        </div>
+    </main>
+
+    <!-- FOOTER -->
+    <footer class="bg-gray-800/80 backdrop-blur border-t border-gray-700 relative z-10">
+        <div class="max-w-7xl mx-auto px-4 py-6 flex flex-col md:flex-row justify-between items-center text-gray-400 text-sm">
+            <p>&copy; 2025 CTF Academy. All rights reserved.</p>
+            <div class="flex space-x-6 mt-4 md:mt-0">
+                <a href="#" class="hover:text-pink-400 transition">Privacy Policy</a>
+                <a href="#" class="hover:text-pink-400 transition">Terms of Service</a>
+                <a href="#" class="hover:text-pink-400 transition">Contact</a>
+            </div>
+        </div>
+    </footer>
+
+</body>
+</html>

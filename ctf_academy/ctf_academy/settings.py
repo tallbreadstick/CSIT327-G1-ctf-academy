@@ -4,9 +4,13 @@ Django settings for ctf_academy project.
 
 import environ
 from pathlib import Path
+import shutil
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
+
+# nodejs package manager
+NPM_BIN_PATH = shutil.which('npm')
 
 # Initialize environment reader
 env = environ.Env()
@@ -27,8 +31,12 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'rest_framework',
+    'tailwind',
+    'theme',
     'accounts',
 ]
+
+TAILWIND_APP_NAME = 'theme'
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
@@ -114,6 +122,9 @@ USE_TZ = True
 # Static files
 STATIC_URL = 'static/'
 
+STATICFILES_DIRS = [
+    BASE_DIR / "static",
+]
 
 # Default primary key field type
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'

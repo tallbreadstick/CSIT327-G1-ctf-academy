@@ -88,3 +88,4 @@ requirements*.txt.bak
 
 # Node (if present for frontend assets)
 node_modules/
+package-lock.json
