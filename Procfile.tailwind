@@ -1,0 +1,2 @@
+django: python ctf_academy\manage.py runserver
+tailwind: python ctf_academy\manage.py tailwind start
