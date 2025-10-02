@@ -1,0 +1,81 @@
+{% load static tailwind_tags %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>CTF Academy - About</title>
+    <link rel="icon" type="image/png" href="{% static 'accounts/images/logo.png' %}">
+    {% tailwind_css %}
+</head>
+<body class="bg-gray-900 text-white flex flex-col min-h-screen">
+
+    <!-- NAVBAR -->
+    <nav class="bg-gray-800 border-b border-gray-700">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex items-center justify-between h-16">
+                <!-- Logo -->
+                <div class="flex-shrink-0 flex items-center space-x-2">
+                    <img src="{% static 'accounts/images/logo.png' %}" alt="Logo" class="h-8 w-8">
+                    <span class="text-xl font-bold text-white">CTF Academy</span>
+                </div>
+                <!-- Menu -->
+                <div class="hidden md:flex space-x-8">
+                    <a href="/" class="text-white hover:text-pink-400">Home</a>
+                    <a href="/about" class="text-pink-400 font-semibold">About</a>
+                    <a href="/challenges" class="text-white hover:text-pink-400">Challenges</a>
+                    <a href="/leaderboards" class="text-white hover:text-pink-400">Leaderboards</a>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- MAIN CONTENT -->
+    <main class="flex-grow flex flex-col items-center justify-center text-left px-6 py-12 max-w-4xl mx-auto">
+        <h1 class="text-5xl font-extrabold mb-6 text-pink-400 text-center">
+            About CTF Academy
+        </h1>
+
+        <div class="space-y-6 text-lg text-gray-300">
+            <p>
+                CTF Academy was built on the idea that cybersecurity isn’t just about throwing payloads at a system until something breaks. 
+                Real security work demands logical thinking — understanding structures, dependencies, and the way layers of defense fit together. 
+                That’s the focus here.
+            </p>
+
+            <p>
+                Our challenges don’t simulate the chaos of an entire operating system or a raw network. 
+                Instead, they take place in a controlled, sandboxed environment where the noise is stripped away. 
+                You get to focus on reasoning through topologies, identifying weak points in layered defenses, 
+                and applying strategies step by step — the kind of thinking that matters in real-world offensive security.
+            </p>
+
+            <p>
+                We took inspiration from platforms like LeetCode, which prove every day that regular practice sharpens skill 
+                more than any lecture, video, or book. CTF Academy takes that same model and applies it to security: 
+                small, consistent exercises that train your problem-solving muscle.
+            </p>
+
+            <p>
+                The platform also comes from what we’ve seen at our own university, 
+                <span class="text-white font-semibold">Cebu Institute of Technology – University</span>. 
+                Programming foundations often get a lot of attention, while networking and system-level concepts remain underexplored. 
+                CTF Academy is our way of bridging that gap — giving students a steady, hands-on path into offensive security 
+                through structured challenges, leaderboards, and streaks that reward persistence.
+            </p>
+        </div>
+    </main>
+
+    <!-- FOOTER -->
+    <footer class="bg-gray-800 border-t border-gray-700">
+        <div class="max-w-7xl mx-auto px-4 py-6 flex flex-col md:flex-row justify-between items-center text-gray-400 text-sm">
+            <p>&copy; 2025 CTF Academy. All rights reserved.</p>
+            <div class="flex space-x-6 mt-4 md:mt-0">
+                <a href="#" class="hover:text-pink-400">Privacy Policy</a>
+                <a href="#" class="hover:text-pink-400">Terms of Service</a>
+                <a href="#" class="hover:text-pink-400">Contact</a>
+            </div>
+        </div>
+    </footer>
+
+</body>
+</html>

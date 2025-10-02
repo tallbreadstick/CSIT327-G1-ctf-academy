@@ -50,6 +50,10 @@ def home_page(request):
     return render(request, "accounts/home.html")
 
 
+def about_page(request):
+    return render(request, "accounts/about.html")
+
+
 def register_page(request):
     if request.method == "POST":
         username = request.POST.get("username")
