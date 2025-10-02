@@ -18,7 +18,7 @@ if not exist "%VENV_DIR%\Scripts\activate.bat" (
 call "%VENV_DIR%\Scripts\activate.bat"
 
 REM Pass through any args to manage.py (e.g., run.bat 0.0.0.0:8000)
-python ctf_academy\manage.py tailwind dev %*
+python ctf_academy\manage.py runserver  %*
 
 :end
 pause
