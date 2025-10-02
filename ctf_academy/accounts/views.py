@@ -46,6 +46,10 @@ class LoginView(APIView):
             return Response({"error": "Invalid credentials"}, status=status.HTTP_401_UNAUTHORIZED)
         
 
+def home_page(request):
+    return render(request, "accounts/home.html")
+
+
 def register_page(request):
     if request.method == "POST":
         username = request.POST.get("username")

@@ -1,0 +1,15 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>CTF Academy - Home</title>
+</head>
+<body>
+    <h1>Welcome to CTF Academy</h1>
+    <p>This is the homepage.</p>
+    {% if user.is_authenticated %}
+        <p>Hello, {{ user.username }}!</p>
+    {% else %}
+        <p><a href="{% url 'login_page' %}">Login</a> or <a href="{% url 'register_page' %}">Register</a></p>
+    {% endif %}
+</body>
+</html>
