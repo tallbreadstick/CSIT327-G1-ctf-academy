@@ -65,6 +65,7 @@ def register_page(request):
         username = request.POST.get("username")
         email = request.POST.get("email")
         password = request.POST.get("password")
+        confirm_password = request.POST.get("confirm_password")
 
         # duplicate checks
         if User.objects.filter(username=username).exists():
@@ -74,7 +75,12 @@ def register_page(request):
             messages.error(request, "Email already registered")
             return render(request, "accounts/register.html")
 
-        # password validation
+        # confirm password match
+        if password != confirm_password:
+            messages.error(request, "Passwords do not match")
+            return render(request, "accounts/register.html")
+
+        # password validation (Django validators from settings.py)
         try:
             validate_password(password)
         except ValidationError as e:

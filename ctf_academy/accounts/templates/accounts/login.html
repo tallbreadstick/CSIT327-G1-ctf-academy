@@ -1,19 +1,116 @@
+{% load static tailwind_tags %}
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-    <title>Login</title>
+    <meta charset="UTF-8">
+    <title>CTF Academy - Login</title>
+    <link rel="icon" type="image/png" href="{% static 'accounts/images/logo.png' %}">
+    {% tailwind_css %}
+
+    <style>
+        @keyframes float {
+            0%, 100% { transform: translateY(0px); }
+            50% { transform: translateY(-6px); }
+        }
+        @keyframes fadeInUp {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .fade-up { animation: fadeInUp 0.8s ease-out forwards; }
+        .floaty { animation: float 4s ease-in-out infinite; }
+        .glow-text {
+            background: linear-gradient(90deg, #ec4899, #f9a8d4, #ffffff);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            animation: bg-pan 6s linear infinite;
+            background-size: 200% auto;
+        }
+        @keyframes bg-pan {
+            0% { background-position: 0% center; }
+            100% { background-position: 200% center; }
+        }
+        .form-pads {
+            padding-left: 1rem;
+            padding-right: 1rem;
+            padding-top: 1.5rem;
+            padding-bottom: 0.75rem;
+            box-sizing: border-box;
+        }
+    </style>
 </head>
-<body>
-    <h2>Login</h2>
-    <form method="post">
-        {% csrf_token %}
-        <label>Username:</label><br>
-        <input type="text" name="username"><br>
+<body class="bg-gray-900 text-white flex flex-col min-h-screen">
 
-        <label>Password:</label><br>
-        <input type="password" name="password"><br>
+    <!-- NAVBAR -->
+    <nav class="bg-gray-800/80 backdrop-blur border-b border-gray-700 z-10">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex items-center justify-between h-16">
+                <div class="flex-shrink-0 flex items-center space-x-2">
+                    <img src="{% static 'accounts/images/logo.png' %}" alt="Logo" class="h-8 w-8">
+                    <span class="text-xl font-bold">CTF Academy</span>
+                </div>
+                <div class="hidden md:flex space-x-8 items-center">
+                    <a href="/" class="text-white hover:text-pink-400">Home</a>
+                    <a href="/about" class="text-white hover:text-pink-400">About</a>
+                    <a href="/challenges" class="text-white hover:text-pink-400">Challenges</a>
+                    <a href="/leaderboards" class="text-white hover:text-pink-400">Leaderboards</a>
+                </div>
+            </div>
+        </div>
+    </nav>
 
-        <button type="submit">Login</button>
-    </form>
+    <!-- MAIN LOGIN FORM -->
+    <main class="flex-grow flex flex-col items-center justify-center px-6 py-20">
+        <div class="bg-gray-800/70 backdrop-blur-lg border border-gray-700 rounded-2xl form-pads shadow-xl fade-up">
+            <div class="flex justify-center mb-6">
+                <img src="{% static 'accounts/images/logo.png' %}" alt="Logo" 
+                     class="h-16 w-16 floaty drop-shadow-lg">
+            </div>
+
+            <h1 class="text-3xl font-extrabold glow-text text-center mb-6">
+                Welcome Back
+            </h1>
+
+            <form method="post" class="space-y-6">
+                {% csrf_token %}
+                
+                <div>
+                    <label class="block text-sm font-medium text-gray-300">Username</label>
+                    <input type="text" name="username"
+                        class="mt-2 w-full px-4 py-3 rounded-lg bg-gray-900 border border-gray-700 text-white placeholder-gray-500 focus:ring-2 focus:ring-pink-500 focus:outline-none"
+                        placeholder="Enter your username">
+                </div>
+
+                <div>
+                    <label class="block text-sm font-medium text-gray-300">Password</label>
+                    <input type="password" name="password"
+                        class="mt-2 w-full px-4 py-3 rounded-lg bg-gray-900 border border-gray-700 text-white placeholder-gray-500 focus:ring-2 focus:ring-pink-500 focus:outline-none"
+                        placeholder="Enter your password">
+                </div>
+
+                <button type="submit"
+                    class="w-full py-3 px-4 bg-pink-600 hover:bg-pink-700 rounded-lg shadow-lg font-semibold transition-all">
+                    Login
+                </button>
+            </form>
+
+            <p class="text-gray-400 text-sm text-center mt-6">
+                Don’t have an account?
+                <a href="/register" class="text-pink-400 hover:underline">Sign up here</a>
+            </p>
+        </div>
+    </main>
+
+    <!-- FOOTER -->
+    <footer class="bg-gray-800/80 backdrop-blur border-t border-gray-700 mt-auto">
+        <div class="max-w-7xl mx-auto px-4 py-6 flex flex-col md:flex-row justify-between items-center text-gray-400 text-sm">
+            <p>&copy; 2025 CTF Academy. All rights reserved.</p>
+            <div class="flex space-x-6 mt-4 md:mt-0">
+                <a href="#" class="hover:text-pink-400">Privacy Policy</a>
+                <a href="#" class="hover:text-pink-400">Terms of Service</a>
+                <a href="#" class="hover:text-pink-400">Contact</a>
+            </div>
+        </div>
+    </footer>
+
 </body>
 </html>
