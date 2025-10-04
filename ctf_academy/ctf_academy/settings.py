@@ -14,12 +14,20 @@ NPM_BIN_PATH = shutil.which('npm')
 
 # Initialize environment reader
 env = environ.Env()
-environ.Env.read_env(BASE_DIR / '.env')
+# The project's top-level .env lives one directory above BASE_DIR
+# (BASE_DIR points at the inner `ctf_academy` package). Use that
+# location so variables defined at the repo root are discovered.
+environ.Env.read_env(BASE_DIR.parent / '.env')
 
 # Quick-start development settings - unsuitable for production
-SECRET_KEY = env("SECRET_KEY")
+# Try to read SECRET_KEY from environment/.env. If it's missing (e.g. .env
+# not loaded), provide a clearly-marked insecure fallback for local dev so
+# the dev server can run. Do NOT use this fallback in production.
+SECRET_KEY = env("SECRET_KEY", default="django-insecure-local-dev-secret")
 DEBUG = env.bool('DEBUG', default=False)
-ALLOWED_HOSTS = env('ALLOWED_HOSTS').split(',')
+# Read ALLOWED_HOSTS as a list. Provide a safe development default so
+# missing env entries won't crash local startup.
+ALLOWED_HOSTS = env.list('ALLOWED_HOSTS', default=['127.0.0.1', 'localhost'])
 
 # Application definition
 
@@ -121,6 +129,14 @@ USE_TZ = True
 
 # Static files
 STATIC_URL = 'static/'
+
+# Optionally include a project-level `static/` directory if it exists.
+# Per-app static directories (e.g. `theme/static/...`) are discovered
+# automatically by Django so this is only for a top-level static folder.
+STATICFILES_DIRS = []
+project_static = BASE_DIR / "static"
+if project_static.exists():
+    STATICFILES_DIRS.append(project_static)
 
 # Default primary key field type
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
