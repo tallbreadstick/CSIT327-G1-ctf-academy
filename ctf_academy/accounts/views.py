@@ -1,6 +1,6 @@
 # Create your views here.
 from django.http import JsonResponse
-from django.contrib.auth import authenticate, login
+from django.contrib.auth import authenticate, login, logout
 from django.contrib.auth.models import User
 from django.contrib.auth.password_validation import validate_password
 from django.core.exceptions import ValidationError
@@ -44,6 +44,12 @@ class LoginView(APIView):
             return Response({"message": "Login successful"}, status=status.HTTP_200_OK)
         else:
             return Response({"error": "Invalid credentials"}, status=status.HTTP_401_UNAUTHORIZED)
+        
+
+class LogoutView(APIView):
+    def post(self, request):
+        logout(request)
+        return Response({"message": "Logged out successfully"}, status=status.HTTP_200_OK)
         
 
 def home_page(request):
@@ -99,3 +105,8 @@ def login_page(request):
             return render(request, "accounts/login.html")
 
     return render(request, "accounts/login.html")
+
+
+def logout_page(request):
+    logout(request)
+    return render(request, "accounts/logout.html")
