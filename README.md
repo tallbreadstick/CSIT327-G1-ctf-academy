@@ -179,10 +179,13 @@ When solving challenges, users are also provided with a web browser which they c
 
 # CTF Academy - Collaborators
 
-- [Jeremiah Ramos](https://github.com/tallbreadstick), Lead Developer
-- [Kean Maverick Saligue](https://github.com/MystoganF), Developer
-- [Christian Andrey Reyes](https://github.com/nahuyadada), Developer
-- [Kervin Gino Sarsonas](https://github.com/Desiigner101), Scrum Master
+| Member | Role | Email |
+| - | - | - |
+| [Jeremiah Ramos](https://github.com/tallbreadstick) | Lead Developer | jeremiah.ramos@cit.edu |
+| [Kean Maverick Saligue](https://github.com/MystoganF) | Developer | keanmaverick.saligue@cit.edu |
+| [Christian Andrey Reyes](https://github.com/nahuyadada) | Developer | christianandrey.reyes@cit.edu |
+
+Scrum Master: [Kervin Gino Sarsonas](https://github.com/Desiigner101)
 
 # CTF Academy - Tech Stack
 
