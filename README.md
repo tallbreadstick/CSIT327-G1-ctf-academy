@@ -141,13 +141,7 @@ if exist "ctf_academy\theme\static_src\package.json" (
 
 ---
 
-If you'd like, I can:
-- Add the `npm` steps to `update.bat` for you,
-- Create a `DEVELOPMENT.md` or `README` replacement with less/more detail,
-- Add a sqlite fallback in `settings.py` so contributors can run without Postgres (dev-only change).
-
-Tell me which you want and I'll apply the change.
-# CTF Academy
+# CTF Academy - Description
 
 A web platform for education in higher-level abstractions of cybersecurity and pentesting tools, techniques, and methodologies.
 
@@ -182,3 +176,24 @@ When solving challenges, users are provided with code editors to write scripts f
 ### WebView
 
 When solving challenges, users are also provided with a web browser which they can use to access sites within the challenge using a GUI. This could use an `<iframe>` tag in the frontend, with most sites being restricted by default. Each challenge specification will also come with a list of `allowed_sites` as a whitelist.
+
+# CTF Academy - Collaborators
+
+- [Jeremiah Ramos](https://github.com/tallbreadstick), Lead Developer
+- [Kean Maverick Saligue](https://github.com/MystoganF), Developer
+- [Christian Andrey Reyes](https://github.com/nahuyadada), Developer
+- [Kervin Gino Sarsonas](https://github.com/Desiigner101), Scrum Master
+
+# CTF Academy - Tech Stack
+
+### Backend
+
+![Tech Stack](https://go-skill-icons.vercel.app/api/icons?i=python,django)
+
+### Frontend
+
+![Tech Stack](https://go-skill-icons.vercel.app/api/icons?i=html,css,js,tailwind)
+
+### Database
+
+![Tech Stack](https://go-skill-icons.vercel.app/api/icons?i=postgres,supabase)
