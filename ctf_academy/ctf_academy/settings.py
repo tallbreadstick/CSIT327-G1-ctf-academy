@@ -1,36 +1,20 @@
-"""
-Django settings for ctf_academy project.
-"""
-
 import environ
 from pathlib import Path
 import shutil
+from datetime import timedelta
 
-# Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
-
-# nodejs package manager
 NPM_BIN_PATH = shutil.which('npm')
-
-# Initialize environment reader
 env = environ.Env()
-# The project's top-level .env lives one directory above BASE_DIR
-# (BASE_DIR points at the inner `ctf_academy` package). Use that
-# location so variables defined at the repo root are discovered.
 environ.Env.read_env(BASE_DIR.parent / '.env')
 
-# Quick-start development settings - unsuitable for production
-# Try to read SECRET_KEY from environment/.env. If it's missing (e.g. .env
-# not loaded), provide a clearly-marked insecure fallback for local dev so
-# the dev server can run. Do NOT use this fallback in production.
 SECRET_KEY = env("SECRET_KEY", default="django-insecure-local-dev-secret")
-DEBUG = env.bool('DEBUG', default=False)
-# Read ALLOWED_HOSTS as a list. Provide a safe development default so
-# missing env entries won't crash local startup.
+
+#DEBUG = env.bool('DEBUG', default=False)
+
+# Change this back to True for development
+DEBUG = True
 ALLOWED_HOSTS = env.list('ALLOWED_HOSTS', default=['127.0.0.1', 'localhost'])
-
-# Application definition
-
 INSTALLED_APPS = [
     'django.contrib.admin',
     'django.contrib.auth',
@@ -39,6 +23,7 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'rest_framework',
+    'rest_framework_simplejwt',
     'tailwind',
     'theme',
     'accounts',
@@ -75,9 +60,6 @@ TEMPLATES = [
 
 WSGI_APPLICATION = 'ctf_academy.wsgi.application'
 
-
-# Database (PostgreSQL with psycopg2)
-# Uses environment variables from .env
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.postgresql',
@@ -89,57 +71,48 @@ DATABASES = {
     }
 }
 
-
-# Password validation
 AUTH_PASSWORD_VALIDATORS = [
-    {
-        'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator',
-    },
-    {
-        'NAME': 'django.contrib.auth.password_validation.MinimumLengthValidator',
-        'OPTIONS': {
-            'min_length': 8,
-        }
-    },
-    {
-        'NAME': 'django.contrib.auth.password_validation.CommonPasswordValidator',
-    },
-    {
-        'NAME': 'django.contrib.auth.password_validation.NumericPasswordValidator',
-    },
+    {'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator'},
+    {'NAME': 'django.contrib.auth.password_validation.MinimumLengthValidator', 'OPTIONS': {'min_length': 8}},
+    {'NAME': 'django.contrib.auth.password_validation.CommonPasswordValidator'},
+    {'NAME': 'django.contrib.auth.password_validation.NumericPasswordValidator'},
 ]
 
-
-# Strong password hashing using Argon2
 PASSWORD_HASHERS = [
-    'django.contrib.auth.hashers.Argon2PasswordHasher',  # Strongest, preferred
+    'django.contrib.auth.hashers.Argon2PasswordHasher',
     'django.contrib.auth.hashers.PBKDF2PasswordHasher',
     'django.contrib.auth.hashers.PBKDF2SHA1PasswordHasher',
     'django.contrib.auth.hashers.BCryptSHA256PasswordHasher',
     'django.contrib.auth.hashers.ScryptPasswordHasher',
 ]
 
-
-# Internationalization
 LANGUAGE_CODE = 'en-us'
-
 TIME_ZONE = 'UTC'
-
 USE_I18N = True
-
 USE_TZ = True
 
-
-# Static files
 STATIC_URL = 'static/'
-
-# Optionally include a project-level `static/` directory if it exists.
-# Per-app static directories (e.g. `theme/static/...`) are discovered
-# automatically by Django so this is only for a top-level static folder.
 STATICFILES_DIRS = []
 project_static = BASE_DIR / "static"
 if project_static.exists():
     STATICFILES_DIRS.append(project_static)
 
-# Default primary key field type
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+
+
+SESSION_COOKIE_AGE = 1800  # Session expires after 30 minutes of inactivity.
+SESSION_EXPIRE_AT_BROWSER_CLOSE = True # Logs user out when they close their browser.
+LOGIN_URL = 'login_page' # Redirects to this URL name if a user tries to access a protected page.
+
+REST_FRAMEWORK = {
+    'DEFAULT_AUTHENTICATION_CLASSES': (
+        'rest_framework_simplejwt.authentication.JWTAuthentication',
+    )
+}
+
+SIMPLE_JWT = {
+    "ACCESS_TOKEN_LIFETIME": timedelta(minutes=15), # Short for security
+    "REFRESH_TOKEN_LIFETIME": timedelta(days=1), # Long-lived for getting new access tokens
+    "USER_ID_FIELD": "id",
+    "USER_ID_CLAIM": "user_id",
+}

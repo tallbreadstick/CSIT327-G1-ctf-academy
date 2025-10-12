@@ -14,17 +14,16 @@ Including another URLconf
     1. Import the include() function: from django.urls import include, path
     2. Add a URL to urlpatterns:  path('blog/', include('blog.urls'))
 """
+# ctf_academy/urls.py
 from django.contrib import admin
 from django.urls import path, include
-from accounts.views import register_page, login_page, about_page, logout_page
 from accounts import views
 
 urlpatterns = [
     path("admin/", admin.site.urls),
-    path("auth/", include("accounts.urls")),   # API endpoints under /auth/
     path('', views.home_page, name="home"),
-    path("about", about_page, name="about_page"),
-    path("register", register_page, name="register_page"),  # template
-    path("login", login_page, name="login_page"),           # template
-    path("logout", logout_page, name="logout_page"),  # template
+    path("", include("accounts.urls")),
 ]
+
+# Add this line to register your custom 404 handler
+handler404 = 'accounts.views.handler404_view'
