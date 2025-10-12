@@ -28,5 +28,5 @@ urlpatterns = [
     path("login", login_page, name="login_page"),
     path("logout", logout_page, name="logout_page"),
     path("about", about_page, name="about_page"),
-    path("dashboard", admin_dashboard_page, name="admin_dashboard_page"),
+    path("dashboard/", admin_dashboard_page, name="admin_dashboard_page"),
 ]
