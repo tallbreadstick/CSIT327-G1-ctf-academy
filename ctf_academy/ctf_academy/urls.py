@@ -15,17 +15,15 @@ Including another URLconf
     2. Add a URL to urlpatterns:  path('blog/', include('blog.urls'))
 """
 # ctf_academy/urls.py
-
 from django.contrib import admin
 from django.urls import path, include
 from accounts import views
 
 urlpatterns = [
     path("admin/", admin.site.urls),
-    
-    # Define the homepage at the root URL
     path('', views.home_page, name="home"),
-    
-    # Include all URLs from the accounts app
     path("", include("accounts.urls")),
 ]
+
+# Add this line to register your custom 404 handler
+handler404 = 'accounts.views.handler404_view'

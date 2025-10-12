@@ -118,3 +118,6 @@ def is_admin(user):
 @user_passes_test(is_admin)
 def admin_dashboard_page(request):
     return render(request, "accounts/admin_dashboard.html")
+
+def handler404_view(request, exception):
+    return render(request, 'accounts/404.html', status=404)

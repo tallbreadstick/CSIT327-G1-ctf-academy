@@ -1,207 +1,75 @@
-{% load static tailwind_tags %}
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <title>CTF Academy - Home</title>
-    <link rel="icon" type="image/png" href="{% static 'accounts/images/logo.png' %}">
-    {% tailwind_css %}
+{% extends 'accounts/base.html' %}
+{% load static %}
 
-    <style>
-        html, body {
-            overflow: auto !important;
-        }
-        @keyframes float {
-            0%, 100% { transform: translateY(0); }
-            50% { transform: translateY(-8px); }
-        }
-        @keyframes fadeInUp {
-            from { opacity: 0; transform: translateY(30px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
-        @keyframes bg-pan {
-            0% { background-position: 0% center; }
-            100% { background-position: 200% center; }
-        }
-        .fade-up { animation: fadeInUp 1s ease-out forwards; }
-        .floaty { animation: float 4s ease-in-out infinite; }
-        .glow-text {
-            background: linear-gradient(90deg, #ec4899, #f9a8d4, #ffffff);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            background-size: 200% auto;
-            animation: bg-pan 8s linear infinite;
-        }
-    </style>
-</head>
-<body class="bg-gray-900 text-white flex flex-col min-h-screen relative overflow-hidden">
+{% block title %}Home{% endblock %}
 
-    <!-- BACKGROUND EFFECT -->
-    <div class="absolute inset-0 opacity-10 bg-[radial-gradient(circle_at_center,#ec4899,transparent_70%)] animate-pulse"></div>
-    <div class="absolute top-0 left-0 w-full h-full bg-[linear-gradient(60deg,#fff1,transparent_60%)]"></div>
+{% block content %}
+<div class="absolute inset-0 opacity-10 bg-[radial-gradient(circle_at_center,#ec4899,transparent_70%)] animate-pulse -z-10"></div>
+<div class="absolute top-0 left-0 w-full h-full bg-[linear-gradient(60deg,#fff1,transparent_60%)] -z-10"></div>
 
-    <!-- NAVBAR -->
-    <nav class="bg-gray-800/80 backdrop-blur border-b border-gray-700 z-10">
-        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div class="flex items-center justify-between h-16">
-                <!-- Logo -->
-                <div class="flex-shrink-0 flex items-center space-x-2">
-                    <img src="{% static 'accounts/images/logo.png' %}" alt="Logo" class="h-8 w-8">
-                    <span class="text-xl font-bold">CTF Academy</span>
-                </div>
+<main class="flex-grow flex flex-col items-center justify-center text-center mt-10 px-6 relative z-10">
+    <img src="{% static 'accounts/images/logo.png' %}" alt="CTF Logo" class="h-20 w-20 mb-6 floaty drop-shadow-lg">
 
-                <!-- Menu -->
-                <div class="hidden md:flex space-x-8 items-center">
-                    {% if user.is_superuser %}
-                    <a href="{% url 'admin_dashboard_page' %}" class="text-pink-400 font-semibold">Home</a>
-                {% else %}
-                    <a href="{% url 'home' %}" class="text-pink-400 font-semibold">Home</a>
-                {% endif %}
-                    <a href="/about" class="text-white hover:text-pink-400">About</a>
-                    <a href="/challenges" class="text-white hover:text-pink-400">Challenges</a>
-                    <a href="/leaderboards" class="text-white hover:text-pink-400">Leaderboards</a>
+    <h1 class="text-6xl font-extrabold mb-4 glow-text fade-up">
+        Welcome to CTF Academy
+    </h1>
+    
+    <p class="mb-8 text-lg text-gray-300 max-w-2xl fade-up" style="animation-delay:0.3s;">
+        Capture the flag in the #1 learning platform for offensive cybersecurity.
+    </p>
 
-                    {% if user.is_authenticated %}
-                    <!-- User Profile Dropdown -->
-                    <div class="relative ml-auto">
-                        <button id="userMenuButton" class="flex items-center space-x-3 focus:outline-none">
-                            <img src="{% static 'accounts/images/empty_profile.jpg' %}" 
-                                alt="Profile" 
-                                class="h-8 w-8 rounded-full border border-gray-600">
-                            <span class="text-white font-semibold">{{ user.username }}</span>
-                            <svg class="h-4 w-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
-                            </svg>
-                        </button>
+    <div class="flex space-x-6 fade-up" style="animation-delay:0.6s;">
+        <a href="/challenges" class="px-6 py-3 bg-pink-600 hover:bg-pink-700 rounded-lg shadow-lg font-semibold">
+            Start Challenges
+        </a>
+        <a href="/leaderboards" class="px-6 py-3 bg-white text-gray-900 hover:bg-gray-200 rounded-lg shadow-lg font-semibold">
+            View Leaderboards
+        </a>
+    </div>
 
-                        <!-- Dropdown -->
-                        <div id="userDropdown" class="hidden absolute right-0 mt-2 w-48 bg-gray-800 rounded-lg shadow-lg py-2 z-20">
-                            <a href="{% url 'logout_page' %}" 
-                            class="block px-4 py-2 text-gray-300 hover:bg-gray-700 hover:text-white transition">
-                            Logout
-                            </a>
-                        </div>
-                    </div>
+    <div class="grid md:grid-cols-3 gap-8 mt-16 fade-up" style="animation-delay:0.9s;">
+        <div class="p-6 bg-gray-800 rounded-xl shadow-lg hover:scale-105 transition">
+            <h3 class="text-xl font-bold text-pink-400 mb-2">Logical Challenges</h3>
+            <p class="text-gray-300 text-sm">Focus on reasoning, structures, and topologies instead of OS and network complexity.</p>
+        </div>
+        <div class="p-6 bg-gray-800 rounded-xl shadow-lg hover:scale-105 transition">
+            <h3 class="text-xl font-bold text-pink-400 mb-2">Sandboxed Environment</h3>
+            <p class="text-gray-300 text-sm">Explore safely without risk and distractions, focusing only on problem-solving.</p>
+        </div>
+        <div class="p-6 bg-gray-800 rounded-xl shadow-lg hover:scale-105 transition">
+            <h3 class="text-xl font-bold text-pink-400 mb-2">Leaderboard & Streaks</h3>
+            <p class="text-gray-300 text-sm">Compete with others, track progress, and earn bonuses for persistence.</p>
+        </div>
+    </div>
 
-                    <script>
-                        const btn = document.getElementById('userMenuButton');
-                        const dropdown = document.getElementById('userDropdown');
-                        btn.addEventListener('click', () => {
-                            dropdown.classList.toggle('hidden');
-                        });
-
-                        // Optional: close dropdown when clicking outside
-                        document.addEventListener('click', (e) => {
-                            if (!btn.contains(e.target) && !dropdown.contains(e.target)) {
-                                dropdown.classList.add('hidden');
-                            }
-                        });
-                    </script>
-                    {% else %}
-                    <!-- Auth Buttons -->
-                    <div class="flex space-x-3 ml-6">
-                        <a href="{% url 'login_page' %}" 
-                        class="px-4 py-2 bg-pink-600 hover:bg-pink-700 rounded-lg shadow font-medium">
-                        Login
-                        </a>
-                        <a href="{% url 'register_page' %}" 
-                        class="px-4 py-2 bg-white text-gray-900 hover:bg-gray-200 rounded-lg shadow font-medium">
-                        Register
-                        </a>
-                    </div>
-                    {% endif %}
-                </div>
+    <section class="mt-20 fade-up w-full max-w-6xl" style="animation-delay:1.2s;">
+        <h2 class="text-3xl font-bold mb-8">What People Are Saying</h2>
+        <div class="grid md:grid-cols-3 gap-8">
+            <div class="p-6 bg-gray-800 rounded-xl shadow-lg">
+                <p class="text-gray-300 italic">“CTF Academy helped me finally understand how security layers work. It’s like LeetCode but for hackers.”</p>
+                <p class="mt-4 text-pink-400 font-semibold">– Florence Azriel Migallos</p>
+            </div>
+            <div class="p-6 bg-gray-800 rounded-xl shadow-lg">
+                <p class="text-gray-300 italic">“The sandbox approach removes distractions. I can focus on logic instead of configs.”</p>
+                <p class="mt-4 text-pink-400 font-semibold">– Jay Yan Tiongzon</p>
+            </div>
+            <div class="p-6 bg-gray-800 rounded-xl shadow-lg">
+                <p class="text-gray-300 italic">“This platform fills the gap in offensive security training we’ve had at our university for years.”</p>
+                <p class="mt-4 text-pink-400 font-semibold">– Dr. Eugene Busico</p>
             </div>
         </div>
-    </nav>
+    </section>
 
-    <!-- MAIN HERO -->
-    <main class="flex-grow flex flex-col items-center justify-center text-center mt-10 px-6 relative z-10">
-        <!-- Floating Logo -->
-        <img src="{% static 'accounts/images/logo.png' %}" alt="CTF Logo" 
-             class="h-20 w-20 mb-6 floaty drop-shadow-lg">
-
-        <h1 class="text-6xl font-extrabold mb-4 glow-text fade-up">
-            Welcome to CTF Academy
-        </h1>
-        
-        <p class="mb-8 text-lg text-gray-300 max-w-2xl fade-up" style="animation-delay:0.3s;">
-            Capture the flag in the #1 learning platform for offensive cybersecurity.
-        </p>
-
-        <!-- Call-to-Actions -->
-        <div class="flex space-x-6 fade-up" style="animation-delay:0.6s;">
-            <a href="/challenges" 
-               class="px-6 py-3 bg-pink-600 hover:bg-pink-700 rounded-lg shadow-lg font-semibold">
-               Start Challenges
-            </a>
-            <a href="/leaderboards" 
-               class="px-6 py-3 bg-white text-gray-900 hover:bg-gray-200 rounded-lg shadow-lg font-semibold">
-               View Leaderboards
-            </a>
+    <section class="mt-20 fade-up w-full max-w-6xl" style="animation-delay:1.5s;">
+        <h2 class="text-3xl font-bold mb-8">Our Trusted Partners</h2>
+        <div class="flex justify-center items-center space-x-12">
+            <img src="{% static 'accounts/images/cit-logo.png' %}" alt="CIT Logo" class="h-20 w-auto">
+            <img src="{% static 'accounts/images/codechum-logo.webp' %}" alt="CodeChum Logo" class="h-15 w-auto">
         </div>
+    </section>
 
-        <!-- Feature Highlights -->
-        <div class="grid md:grid-cols-3 gap-8 mt-16 fade-up" style="animation-delay:0.9s;">
-            <div class="p-6 bg-gray-800 rounded-xl shadow-lg hover:scale-105 transition">
-                <h3 class="text-xl font-bold text-pink-400 mb-2">Logical Challenges</h3>
-                <p class="text-gray-300 text-sm">Focus on reasoning, structures, and topologies instead of OS and network complexity.</p>
-            </div>
-            <div class="p-6 bg-gray-800 rounded-xl shadow-lg hover:scale-105 transition">
-                <h3 class="text-xl font-bold text-pink-400 mb-2">Sandboxed Environment</h3>
-                <p class="text-gray-300 text-sm">Explore safely without risk and distractions, focusing only on problem-solving.</p>
-            </div>
-            <div class="p-6 bg-gray-800 rounded-xl shadow-lg hover:scale-105 transition">
-                <h3 class="text-xl font-bold text-pink-400 mb-2">Leaderboard & Streaks</h3>
-                <p class="text-gray-300 text-sm">Compete with others, track progress, and earn bonuses for persistence.</p>
-            </div>
-        </div>
-
-        <!-- Testimonials -->
-        <section class="mt-20 fade-up" style="animation-delay:1.2s;">
-            <h2 class="text-3xl font-bold mb-8">What People Are Saying</h2>
-            <div class="grid md:grid-cols-3 gap-8">
-                <div class="p-6 bg-gray-800 rounded-xl shadow-lg">
-                    <p class="text-gray-300 italic">“CTF Academy helped me finally understand how security layers work. It’s like LeetCode but for hackers.”</p>
-                    <p class="mt-4 text-pink-400 font-semibold">– Florence Azriel Migallos</p>
-                </div>
-                <div class="p-6 bg-gray-800 rounded-xl shadow-lg">
-                    <p class="text-gray-300 italic">“The sandbox approach removes distractions. I can focus on logic instead of configs.”</p>
-                    <p class="mt-4 text-pink-400 font-semibold">– Jay Yan Tiongzon</p>
-                </div>
-                <div class="p-6 bg-gray-800 rounded-xl shadow-lg">
-                    <p class="text-gray-300 italic">“This platform fills the gap in offensive security training we’ve had at our university for years.”</p>
-                    <p class="mt-4 text-pink-400 font-semibold">– Dr. Eugene Busico</p>
-                </div>
-            </div>
-        </section>
-
-        <!-- Partnerships -->
-        <section class="mt-20 fade-up" style="animation-delay:1.5s;">
-            <h2 class="text-3xl font-bold mb-8">Our Trusted Partners</h2>
-            <div class="flex justify-center items-center space-x-12">
-                <img src="{% static 'accounts/images/cit-logo.png' %}" alt="CIT Logo" class="h-20 w-auto">
-                <img src="{% static 'accounts/images/codechum-logo.webp' %}" alt="CodeChum Logo" class="h-15 w-auto">
-            </div>
-        </section>
-
-        <!-- Call to Action -->
-        <section class="mt-20 fade-up" style="animation-delay:1.8s;">
-            <h2 class="text-4xl font-extrabold glow-text mb-6">Ready to Capture the Flag?</h2>
-        </section>
-    </main>
-
-    <!-- FOOTER -->
-    <footer class="bg-gray-800/80 backdrop-blur border-t border-gray-700 relative z-10 mt-16">
-        <div class="max-w-7xl mx-auto px-4 py-6 flex flex-col md:flex-row justify-between items-center text-gray-400 text-sm">
-            <p>&copy; 2025 CTF Academy. All rights reserved.</p>
-            <div class="flex space-x-6 mt-4 md:mt-0">
-                <a href="#" class="hover:text-pink-400">Privacy Policy</a>
-                <a href="#" class="hover:text-pink-400">Terms of Service</a>
-                <a href="#" class="hover:text-pink-400">Contact</a>
-            </div>
-        </div>
-    </footer>
-
-</body>
-</html>
+    <section class="mt-20 fade-up" style="animation-delay:1.8s;">
+        <h2 class="text-4xl font-extrabold glow-text mb-6">Ready to Capture the Flag?</h2>
+    </section>
+</main>
+{% endblock %}
