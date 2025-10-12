@@ -90,14 +90,20 @@ def register_page(request):
     return render(request, "accounts/register.html")
 
 def login_page(request):
-    # This view remains unchanged
+    # If user is already logged in, redirect them
+    if request.user.is_authenticated:
+        if request.user.is_superuser:
+            return redirect("admin_dashboard_page")
+        else:
+            return redirect("home")
+    
     if request.method == "POST":
         username = request.POST.get("username")
         password = request.POST.get("password")
         user = authenticate(request, username=username, password=password)
         if user is not None:
             login(request, user)
-            messages.success(request, "Login successful!")
+            # Redirect without message
             if user.is_superuser:
                 return redirect("admin_dashboard_page")
             else:
@@ -105,6 +111,8 @@ def login_page(request):
         else:
             messages.error(request, "Invalid credentials")
             return render(request, "accounts/login.html")
+    
+    # GET request - just show the form
     return render(request, "accounts/login.html")
 
 def logout_page(request):
