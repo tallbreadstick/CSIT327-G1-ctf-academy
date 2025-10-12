@@ -16,8 +16,14 @@
             from { opacity: 0; transform: translateY(20px); }
             to { opacity: 1; transform: translateY(0); }
         }
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            10%, 30%, 50%, 70%, 90% { transform: translateX(-5px); }
+            20%, 40%, 60%, 80% { transform: translateX(5px); }
+        }
         .fade-up { animation: fadeInUp 0.8s ease-out forwards; }
         .floaty { animation: float 4s ease-in-out infinite; }
+        .shake { animation: shake 0.5s ease-in-out; }
         .glow-text {
             background: linear-gradient(90deg, #ec4899, #f9a8d4, #ffffff);
             -webkit-background-clip: text;
@@ -60,7 +66,7 @@
 
     <!-- MAIN LOGIN FORM -->
     <main class="flex-grow flex flex-col items-center justify-center px-6 py-20">
-        <div class="bg-gray-800/70 backdrop-blur-lg border border-gray-700 rounded-2xl form-pads shadow-xl fade-up">
+        <div class="w-full max-w-md bg-gray-800/70 backdrop-blur-lg border border-gray-700 rounded-2xl form-pads shadow-xl fade-up {% if messages %}shake{% endif %}">
             <div class="flex justify-center mb-6">
                 <img src="{% static 'accounts/images/logo.png' %}" alt="Logo" 
                      class="h-16 w-16 floaty drop-shadow-lg">
@@ -70,21 +76,41 @@
                 Welcome Back
             </h1>
 
+            <!-- ERROR MESSAGES -->
+            {% if messages %}
+                {% for message in messages %}
+                    <div class="mb-6 p-3 rounded-lg border {% if message.tags == 'error' %}bg-red-900/20 border-red-700/50 text-red-300{% elif message.tags == 'success' %}bg-green-900/20 border-green-700/50 text-green-300{% else %}bg-blue-900/20 border-blue-700/50 text-blue-300{% endif %}">
+                        <div class="flex items-center">
+                            <svg class="w-4 h-4 mr-2 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                                {% if message.tags == 'error' %}
+                                <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd"/>
+                                {% elif message.tags == 'success' %}
+                                <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/>
+                                {% else %}
+                                <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd"/>
+                                {% endif %}
+                            </svg>
+                            <span class="text-sm font-medium">{{ message }}</span>
+                        </div>
+                    </div>
+                {% endfor %}
+            {% endif %}
+
             <form method="post" class="space-y-6">
                 {% csrf_token %}
                 
                 <div>
                     <label class="block text-sm font-medium text-gray-300">Username</label>
-                    <input type="text" name="username"
+                    <input type="text" name="username" value="{{ request.POST.username }}"
                         class="mt-2 w-full px-4 py-3 rounded-lg bg-gray-900 border border-gray-700 text-white placeholder-gray-500 focus:ring-2 focus:ring-pink-500 focus:outline-none"
-                        placeholder="Enter your username">
+                        placeholder="Enter your username" required>
                 </div>
 
                 <div>
                     <label class="block text-sm font-medium text-gray-300">Password</label>
                     <input type="password" name="password"
                         class="mt-2 w-full px-4 py-3 rounded-lg bg-gray-900 border border-gray-700 text-white placeholder-gray-500 focus:ring-2 focus:ring-pink-500 focus:outline-none"
-                        placeholder="Enter your password">
+                        placeholder="Enter your password" required>
                 </div>
 
                 <button type="submit"
@@ -94,7 +120,7 @@
             </form>
 
             <p class="text-gray-400 text-sm text-center mt-6">
-                Don’t have an account?
+                Don't have an account?
                 <a href="/register" class="text-pink-400 hover:underline">Sign up here</a>
             </p>
         </div>
