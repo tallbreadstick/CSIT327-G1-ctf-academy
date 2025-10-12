@@ -1,0 +1,82 @@
+{% load static tailwind_tags %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CTF Academy - {% block title %}Home{% endblock %}</title>
+    <link rel="icon" type="image/png" href="{% static 'accounts/images/logo.png' %}">
+    {% tailwind_css %}
+    <style>
+        /* Add any global styles here if needed */
+        @keyframes float { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-8px); } }
+        @keyframes fadeInUp { from { opacity: 0; transform: translateY(30px); } to { opacity: 1; transform: translateY(0); } }
+        @keyframes bg-pan { 0% { background-position: 0% center; } 100% { background-position: 200% center; } }
+        .fade-up { animation: fadeInUp 1s ease-out forwards; }
+        .floaty { animation: float 4s ease-in-out infinite; }
+        .glow-text {
+            background: linear-gradient(90deg, #ec4899, #f9a8d4, #ffffff);
+            -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+            background-size: 200% auto; animation: bg-pan 8s linear infinite;
+        }
+        /* Style for the active navigation link */
+        .nav-link-active {
+            color: #ec4899; /* Pink color for active link */
+            font-weight: 600;
+        }
+    </style>
+</head>
+<body class="bg-gray-900 text-white flex flex-col min-h-screen relative">
+
+    <nav class="bg-gray-800/80 backdrop-blur border-b border-gray-700 z-20 sticky top-0">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div class="flex items-center justify-between h-16">
+
+            <div class="flex-shrink-0 flex items-center space-x-2">
+                <a href="{% if user.is_superuser %}{% url 'admin_dashboard_page' %}{% else %}{% url 'home' %}{% endif %}" class="flex items-center space-x-2">
+                    <img src="{% static 'accounts/images/logo.png' %}" alt="Logo" class="h-8 w-8">
+                    <span class="text-xl font-bold">CTF Academy</span>
+                </a>
+            </div>
+            <div class="hidden md:flex space-x-8 items-center">
+                {% include 'accounts/partials/nav_links.html' %}
+            </div>
+
+            <div class="md:hidden flex items-center">
+                <button id="mobileMenuButton" class="focus:outline-none">
+                    <svg class="h-6 w-6" stroke="currentColor" fill="none" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16m-7 6h7" />
+                    </svg>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <div id="mobileMenu" class="md:hidden hidden">
+        <div class="px-2 pt-2 pb-3 space-y-1 sm:px-3">
+            {% include 'accounts/partials/nav_links.html' %}
+        </div>
+    </div>
+</nav>
+
+    <main class="flex-grow">
+        {% block content %}
+        {% endblock %}
+    </main>
+
+    <footer class="bg-gray-800/80 backdrop-blur border-t border-gray-700 relative z-10 mt-auto">
+        <div class="max-w-7xl mx-auto px-4 py-6 text-center text-gray-400 text-sm">
+            <p>&copy; {% now "Y" %} CTF Academy. All rights reserved.</p>
+        </div>
+    </footer>
+
+    <script>
+        // JavaScript for mobile menu toggle
+        const mobileMenuButton = document.getElementById('mobileMenuButton');
+        const mobileMenu = document.getElementById('mobileMenu');
+        mobileMenuButton.addEventListener('click', () => {
+            mobileMenu.classList.toggle('hidden');
+        });
+    </script>
+</body>
+</html>
