@@ -1,0 +1,126 @@
+{% load static tailwind_tags %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>CTF Academy - Admin Dashboard</title>
+    <link rel="icon" type="image/png" href="{% static 'accounts/images/logo.png' %}">
+    {% tailwind_css %}
+    <style>
+        /* Optional: Add a subtle transition for the stat cards */
+        .stat-card {
+            transition: transform 0.2s ease-out, box-shadow 0.2s ease-out;
+        }
+        .stat-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 10px 15px -3px rgba(236, 72, 153, 0.1), 0 4px 6px -2px rgba(236, 72, 153, 0.05);
+        }
+    </style>
+</head>
+<body class="bg-gray-900 text-white flex flex-col min-h-screen">
+
+    <nav class="bg-gray-800/80 backdrop-blur border-b border-gray-700 z-10">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex items-center justify-between h-16">
+                <div class="flex-shrink-0 flex items-center space-x-2">
+                    <img src="{% static 'accounts/images/logo.png' %}" alt="Logo" class="h-8 w-8">
+                    <span class="text-xl font-bold">CTF Academy</span>
+                </div>
+
+                <div class="hidden md:flex space-x-8 items-center">
+                    <a href="{% url 'admin_dashboard_page' %}" class="text-pink-400 font-semibold">Home</a>
+                    <a href="/about" class="text-white hover:text-pink-400">About</a>
+                    <a href="/challenges" class="text-white hover:text-pink-400">Challenges</a>
+                    <a href="/leaderboards" class="text-white hover:text-pink-400">Leaderboards</a>
+
+                    {% if user.is_authenticated %}
+                    <div class="relative ml-auto">
+                        <button id="userMenuButton" class="flex items-center space-x-3 focus:outline-none">
+                            <img src="{% static 'accounts/images/empty_profile.jpg' %}" 
+                                 alt="Profile" 
+                                 class="h-8 w-8 rounded-full border border-gray-600">
+                            <span class="text-white font-semibold">{{ user.username }}</span>
+                            <svg class="h-4 w-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+                            </svg>
+                        </button>
+                        <div id="userDropdown" class="hidden absolute right-0 mt-2 w-48 bg-gray-800 rounded-lg shadow-lg py-2 z-20">
+                            <a href="{% url 'logout_page' %}" class="block px-4 py-2 text-gray-300 hover:bg-gray-700 hover:text-white transition">
+                                Logout
+                            </a>
+                        </div>
+                    </div>
+                    <script>
+                        // Simple script for dropdown functionality
+                        const btn = document.getElementById('userMenuButton');
+                        const dropdown = document.getElementById('userDropdown');
+                        btn.addEventListener('click', () => dropdown.classList.toggle('hidden'));
+                        document.addEventListener('click', (e) => {
+                            if (!btn.contains(e.target) && !dropdown.contains(e.target)) {
+                                dropdown.classList.add('hidden');
+                            }
+                        });
+                    </script>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <main class="flex-grow container mx-auto px-6 py-10">
+        <header class="mb-10">
+            <h1 class="text-4xl font-extrabold text-pink-400">Admin Dashboard</h1>
+            <p class="mt-2 text-lg text-gray-400">Platform overview and management tools.</p>
+        </header>
+
+        <section class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-12">
+            <div class="stat-card bg-gray-800 p-6 rounded-xl shadow-lg border border-gray-700">
+                <p class="text-sm font-medium text-gray-400">Total Users</p>
+                <p class="text-3xl font-bold text-white mt-1">1,234</p>
+            </div>
+            <div class="stat-card bg-gray-800 p-6 rounded-xl shadow-lg border border-gray-700">
+                <p class="text-sm font-medium text-gray-400">Total Challenges</p>
+                <p class="text-3xl font-bold text-white mt-1">58</p>
+            </div>
+            <div class="stat-card bg-gray-800 p-6 rounded-xl shadow-lg border border-gray-700">
+                <p class="text-sm font-medium text-gray-400">Solved Submissions</p>
+                <p class="text-3xl font-bold text-white mt-1">7,890</p>
+            </div>
+            <div class="stat-card bg-gray-800 p-6 rounded-xl shadow-lg border border-gray-700">
+                <p class="text-sm font-medium text-gray-400">Site Health</p>
+                <p class="text-3xl font-bold text-green-400 mt-1">Online</p>
+            </div>
+        </section>
+
+        <section>
+            <h2 class="text-2xl font-bold text-white mb-6">Management Tools</h2>
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                <a href="#" class="block bg-gray-800 p-6 rounded-xl shadow-lg hover:bg-gray-700 transition-colors duration-200">
+                    <h3 class="text-xl font-bold text-pink-400">Manage Challenges</h3>
+                    <p class="text-gray-300 mt-2 text-sm">Add, edit, or remove CTF challenges and view flags.</p>
+                </a>
+                <a href="#" class="block bg-gray-800 p-6 rounded-xl shadow-lg hover:bg-gray-700 transition-colors duration-200">
+                    <h3 class="text-xl font-bold text-pink-400">Manage Users</h3>
+                    <p class="text-gray-300 mt-2 text-sm">View user profiles, track progress, and handle accounts.</p>
+                </a>
+                <a href="#" class="block bg-gray-800 p-6 rounded-xl shadow-lg hover:bg-gray-700 transition-colors duration-200">
+                    <h3 class="text-xl font-bold text-pink-400">Site Settings</h3>
+                    <p class="text-gray-300 mt-2 text-sm">Configure announcements, site rules, and platform settings.</p>
+                </a>
+            </div>
+        </section>
+    </main>
+
+    <footer class="bg-gray-800/80 backdrop-blur border-t border-gray-700 relative z-10 mt-16">
+        <div class="max-w-7xl mx-auto px-4 py-6 flex flex-col md:flex-row justify-between items-center text-gray-400 text-sm">
+            <p>&copy; 2025 CTF Academy. All rights reserved.</p>
+            <div class="flex space-x-6 mt-4 md:mt-0">
+                <a href="#" class="hover:text-pink-400">Privacy Policy</a>
+                <a href="#" class="hover:text-pink-400">Terms of Service</a>
+                <a href="#" class="hover:text-pink-400">Contact</a>
+            </div>
+        </div>
+    </footer>
+
+</body>
+</html>

@@ -52,7 +52,11 @@
 
                 <!-- Menu -->
                 <div class="hidden md:flex space-x-8 items-center">
-                    <a href="/" class="text-pink-400 font-semibold">Home</a>
+                    {% if user.is_superuser %}
+                    <a href="{% url 'admin_dashboard_page' %}" class="text-pink-400 font-semibold">Home</a>
+                {% else %}
+                    <a href="{% url 'home' %}" class="text-pink-400 font-semibold">Home</a>
+                {% endif %}
                     <a href="/about" class="text-white hover:text-pink-400">About</a>
                     <a href="/challenges" class="text-white hover:text-pink-400">Challenges</a>
                     <a href="/leaderboards" class="text-white hover:text-pink-400">Leaderboards</a>

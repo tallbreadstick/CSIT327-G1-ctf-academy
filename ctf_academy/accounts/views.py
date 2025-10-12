@@ -1,4 +1,5 @@
 # Create your views here.
+
 from django.http import JsonResponse
 from django.contrib.auth import authenticate, login, logout
 from django.contrib.auth.models import User
@@ -9,6 +10,9 @@ from rest_framework.views import APIView
 from rest_framework import status
 from django.shortcuts import render, redirect
 from django.contrib import messages
+# --- ADDED IMPORTS ---
+from django.contrib.auth.decorators import login_required, user_passes_test
+
 
 class RegisterView(APIView):
     def post(self, request):
@@ -16,19 +20,16 @@ class RegisterView(APIView):
         email = request.data.get("email")
         password = request.data.get("password")
 
-        # test for duplicate users
         if User.objects.filter(username=username).exists():
             return Response({"error": "Username already taken"}, status=status.HTTP_400_BAD_REQUEST)
         if User.objects.filter(email=email).exists():
             return Response({"error": "Email already registered"}, status=status.HTTP_400_BAD_REQUEST)
 
-        # validate password strength
         try:
             validate_password(password)
         except ValidationError as e:
             return Response({"errors": e.messages}, status=status.HTTP_400_BAD_REQUEST)
 
-        # create user
         user = User.objects.create_user(username=username, email=email, password=password)
         return Response({"message": "User registered successfully!"}, status=status.HTTP_201_CREATED)
 
@@ -40,11 +41,11 @@ class LoginView(APIView):
 
         user = authenticate(request, username=username, password=password)
         if user is not None:
-            login(request, user)  # session cookie if using Django sessions
+            login(request, user)
             return Response({"message": "Login successful"}, status=status.HTTP_200_OK)
         else:
             return Response({"error": "Invalid credentials"}, status=status.HTTP_401_UNAUTHORIZED)
-        
+            
 
 class LogoutView(APIView):
     def post(self, request):
@@ -52,7 +53,12 @@ class LogoutView(APIView):
         return Response({"message": "Logged out successfully"}, status=status.HTTP_200_OK)
         
 
+# --- MODIFIED HOME PAGE VIEW ---
 def home_page(request):
+    # If a logged-in admin tries to visit the home page, send them to their dashboard
+    if request.user.is_authenticated and request.user.is_superuser:
+        return redirect("admin_dashboard_page")
+        
     return render(request, "accounts/home.html")
 
 
@@ -67,7 +73,6 @@ def register_page(request):
         password = request.POST.get("password")
         confirm_password = request.POST.get("confirm_password")
 
-        # duplicate checks
         if User.objects.filter(username=username).exists():
             messages.error(request, "Username already taken")
             return render(request, "accounts/register.html")
@@ -75,12 +80,10 @@ def register_page(request):
             messages.error(request, "Email already registered")
             return render(request, "accounts/register.html")
 
-        # confirm password match
         if password != confirm_password:
             messages.error(request, "Passwords do not match")
             return render(request, "accounts/register.html")
 
-        # password validation (Django validators from settings.py)
         try:
             validate_password(password)
         except ValidationError as e:
@@ -88,7 +91,6 @@ def register_page(request):
                 messages.error(request, err)
             return render(request, "accounts/register.html")
 
-        # create user
         User.objects.create_user(username=username, email=email, password=password)
         messages.success(request, "Account created successfully! You can log in now.")
         return redirect("login_page")
@@ -96,6 +98,7 @@ def register_page(request):
     return render(request, "accounts/register.html")
 
 
+# --- MODIFIED LOGIN PAGE VIEW ---
 def login_page(request):
     if request.method == "POST":
         username = request.POST.get("username")
@@ -105,7 +108,12 @@ def login_page(request):
         if user is not None:
             login(request, user)
             messages.success(request, "Login successful!")
-            return redirect("/")  # home/dashboard
+            
+            # --- THIS IS THE REDIRECTION LOGIC ---
+            if user.is_superuser:
+                return redirect("admin_dashboard_page")  # Go to admin dashboard
+            else:
+                return redirect("home")  # Go to regular home page
         else:
             messages.error(request, "Invalid credentials")
             return render(request, "accounts/login.html")
@@ -116,3 +124,12 @@ def login_page(request):
 def logout_page(request):
     logout(request)
     return render(request, "accounts/logout.html")
+
+# --- HELPER FUNCTION and NEW VIEW FOR ADMIN DASHBOARD ---
+def is_admin(user):
+    return user.is_superuser
+
+@login_required
+@user_passes_test(is_admin)
+def admin_dashboard_page(request):
+    return render(request, "accounts/admin_dashboard.html")
