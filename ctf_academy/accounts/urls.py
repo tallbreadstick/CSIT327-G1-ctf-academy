@@ -3,20 +3,27 @@
 from django.urls import path
 from .views import (
     RegisterView,
-    LoginView,
     register_page,
     login_page,
     about_page,
     logout_page,
-    admin_dashboard_page # Don't forget to import your new admin dashboard view
+    admin_dashboard_page,
+    # --- ADD THIS NEW VIEW ---
+    MyTokenObtainPairView
+)
+# --- ADD THESE IMPORTS ---
+from rest_framework_simplejwt.views import (
+    TokenRefreshView,
 )
 
 urlpatterns = [
-    # REST API endpoints
+    # --- MODIFIED REST API ENDPOINTS ---
+    # The old LoginView is now removed and replaced by these two endpoints
+    path('api/token/', MyTokenObtainPairView.as_view(), name='token_obtain_pair'),
+    path('api/token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
     path("api/register/", RegisterView.as_view(), name="register_api"),
-    path("api/login/", LoginView.as_view(), name="login_api"),
 
-    # HTML Template Pages
+    # --- HTML TEMPLATE PAGES (Unchanged) ---
     path("register", register_page, name="register_page"),
     path("login", login_page, name="login_page"),
     path("logout", logout_page, name="logout_page"),
