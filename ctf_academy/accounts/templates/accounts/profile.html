@@ -54,8 +54,15 @@
             </div>
         </div>
 
-        <!-- Title -->
-        <h1 class="text-3xl font-bold mb-8 glow-text fade-up" style="animation-delay: 0.1s;">Profile Settings</h1>
+        <!-- Title and Back Button -->
+        <div class="flex items-center justify-between mb-8 fade-up" style="animation-delay: 0.1s;">
+            <h1 class="text-3xl font-bold glow-text">Profile Settings</h1>
+            <a href="{% url 'home' %}" 
+            class="px-6 py-2 bg-slate-800 hover:bg-slate-700 text-white rounded-full text-sm font-medium border border-pink-600/30 shadow-md transition">
+                ← Back to Home
+            </a>
+        </div>
+
 
         <form class="space-y-6">
             <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
