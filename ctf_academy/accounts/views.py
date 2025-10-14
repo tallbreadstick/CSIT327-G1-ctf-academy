@@ -141,13 +141,23 @@ def profile_page(request):
         new_password = request.POST.get("new_password")
         confirm_password = request.POST.get("confirm_password")
 
-        # Update basic fields
-        user.first_name = first_name
-        user.last_name = last_name
-        user.username = username
-        user.email = email
+        # Track changes
+        changes_made = False
 
-        # Validate and update password if entered
+        # Update personal info if changed
+        if (
+            user.first_name != first_name
+            or user.last_name != last_name
+            or user.username != username
+            or user.email != email
+        ):
+            user.first_name = first_name
+            user.last_name = last_name
+            user.username = username
+            user.email = email
+            changes_made = True
+
+        # Handle password changes
         if current_password or new_password or confirm_password:
             if not user.check_password(current_password):
                 messages.error(request, "Current password is incorrect.")
@@ -161,22 +171,25 @@ def profile_page(request):
                 validate_password(new_password, user)
                 user.set_password(new_password)
                 messages.success(request, "Password updated successfully.")
+                changes_made = True
             except ValidationError as e:
                 for err in e.messages:
                     messages.error(request, err)
                 return redirect("profile_page")
 
-        user.save()
-        messages.success(request, "Profile updated successfully!")
+        # If no changes were made at all
+        if not changes_made:
+            messages.info(request, "No changes were made.")
+            return redirect("profile_page")
 
-        # Re-authenticate the user if password changed
+        user.save()
+
+        # Keep session alive if password changed
         if new_password:
             from django.contrib.auth import update_session_auth_hash
             update_session_auth_hash(request, user)
 
+        messages.success(request, "Profile updated successfully!")
         return redirect("profile_page")
 
-    context = {
-        "user": user
-    }
-    return render(request, "accounts/profile.html", context)
+    return render(request, "accounts/profile.html", {"user": request.user})
