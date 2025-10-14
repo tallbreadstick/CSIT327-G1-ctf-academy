@@ -126,3 +126,8 @@ def is_admin(user):
 #@user_passes_test(is_admin)
 def admin_dashboard_page(request):
     return render(request, "accounts/admin_dashboard.html")
+
+
+@login_required
+def profile_page(request):
+    return render(request, "accounts/profile.html")

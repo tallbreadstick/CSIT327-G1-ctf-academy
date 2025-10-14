@@ -8,6 +8,7 @@ from .views import (
     about_page,
     logout_page,
     admin_dashboard_page,
+    profile_page,
     # --- ADD THIS NEW VIEW ---
     MyTokenObtainPairView
 )
@@ -29,4 +30,5 @@ urlpatterns = [
     path("logout", logout_page, name="logout_page"),
     path("about/", about_page, name="about_page"),
     path("dashboard/", admin_dashboard_page, name="admin_dashboard_page"),
+    path("profile/", profile_page, name="profile_page"),
 ]
