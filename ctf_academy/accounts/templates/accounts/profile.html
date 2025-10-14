@@ -35,6 +35,18 @@
 </head>
 <body class="bg-slate-900 text-white min-h-screen relative overflow-hidden">
 
+        {% if messages %}
+    <div class="fixed top-6 right-6 space-y-2 z-50">
+        {% for message in messages %}
+        <div class="px-6 py-3 rounded-lg shadow-lg text-white 
+            {% if message.tags == 'error' %} bg-red-600 {% elif message.tags == 'success' %} bg-green-600 {% else %} bg-slate-700 {% endif %}">
+            {{ message }}
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %}
+
+
     <!-- BACKGROUND EFFECT -->
     <div class="absolute inset-0 opacity-10 bg-[radial-gradient(circle_at_center,#ec4899,transparent_70%)] animate-pulse"></div>
     <div class="absolute top-0 left-0 w-full h-full bg-[linear-gradient(60deg,#fff1,transparent_60%)]"></div>
@@ -64,7 +76,8 @@
         </div>
 
 
-        <form class="space-y-6">
+        <form method="POST" class="space-y-6">
+     {% csrf_token %}
             <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
                 
                 <!-- Profile Picture Card -->
@@ -94,19 +107,19 @@
                         <div class="grid grid-cols-2 gap-3">
                             <div>
                                 <label class="block text-xs text-gray-400 mb-2">First Name</label>
-                                <input type="text" name="first_name" value=""
+                                <input type="text" name="first_name" value="{{ user.first_name }}"
                                     class="w-full px-4 py-2.5 bg-slate-800/80 border border-slate-700/50 rounded-lg text-white text-sm focus:outline-none focus:border-pink-600 transition">
                             </div>
                             <div>
                                 <label class="block text-xs text-gray-400 mb-2">Last Name</label>
-                                <input type="text" name="last_name" value=""
+                                <input type="text" name="last_name" value="{{ user.last_name }}"
                                     class="w-full px-4 py-2.5 bg-slate-800/80 border border-slate-700/50 rounded-lg text-white text-sm focus:outline-none focus:border-pink-600 transition">
                             </div>
                         </div>
 
                         <div>
                             <label class="block text-xs text-gray-400 mb-2">Username</label>
-                            <input type="text" name="username" value=""
+                            <input type="text" name="username" value="{{ user.username }}"
                                 class="w-full px-4 py-2.5 bg-slate-800/80 border border-slate-700/50 rounded-lg text-white text-sm focus:outline-none focus:border-pink-600 transition">
                         </div>
 
@@ -117,7 +130,7 @@
                                 </svg>
                                 Email Address
                             </label>
-                            <input type="email" name="email" value=""
+                            <input type="email" name="email" value="{{ user.email }}"
                                 class="w-full px-4 py-2.5 bg-slate-800/80 border border-slate-700/50 rounded-lg text-white text-sm focus:outline-none focus:border-pink-600 transition">
                         </div>
                     </div>

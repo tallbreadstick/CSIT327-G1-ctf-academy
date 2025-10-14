@@ -130,4 +130,53 @@ def admin_dashboard_page(request):
 
 @login_required
 def profile_page(request):
-    return render(request, "accounts/profile.html")
+    user = request.user
+
+    if request.method == "POST":
+        first_name = request.POST.get("first_name")
+        last_name = request.POST.get("last_name")
+        username = request.POST.get("username")
+        email = request.POST.get("email")
+        current_password = request.POST.get("current_password")
+        new_password = request.POST.get("new_password")
+        confirm_password = request.POST.get("confirm_password")
+
+        # Update basic fields
+        user.first_name = first_name
+        user.last_name = last_name
+        user.username = username
+        user.email = email
+
+        # Validate and update password if entered
+        if current_password or new_password or confirm_password:
+            if not user.check_password(current_password):
+                messages.error(request, "Current password is incorrect.")
+                return redirect("profile_page")
+
+            if new_password != confirm_password:
+                messages.error(request, "New passwords do not match.")
+                return redirect("profile_page")
+
+            try:
+                validate_password(new_password, user)
+                user.set_password(new_password)
+                messages.success(request, "Password updated successfully.")
+            except ValidationError as e:
+                for err in e.messages:
+                    messages.error(request, err)
+                return redirect("profile_page")
+
+        user.save()
+        messages.success(request, "Profile updated successfully!")
+
+        # Re-authenticate the user if password changed
+        if new_password:
+            from django.contrib.auth import update_session_auth_hash
+            update_session_auth_hash(request, user)
+
+        return redirect("profile_page")
+
+    context = {
+        "user": user
+    }
+    return render(request, "accounts/profile.html", context)
