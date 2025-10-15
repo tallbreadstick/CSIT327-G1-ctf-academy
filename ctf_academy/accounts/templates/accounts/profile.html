@@ -37,9 +37,9 @@
 <body class="bg-gray-900 text-white min-h-screen relative overflow-hidden">
 
     {% if messages %}
-    <div class="fixed top-6 right-6 space-y-2 z-50">
+    <div class="fixed top-6 right-6 space-y-2 z-50" id="messageContainer">
         {% for message in messages %}
-        <div class="px-6 py-3 rounded-lg shadow-lg text-white 
+        <div class="message-alert px-6 py-3 rounded-lg shadow-lg text-white transition-all duration-500
             {% if message.tags == 'error' %} bg-red-600 {% elif message.tags == 'success' %} bg-green-600 {% else %} bg-slate-700 {% endif %}">
             {{ message }}
         </div>
@@ -238,6 +238,27 @@
 
     <!-- Scripts -->
     <script>
+        // Auto-dismiss messages after 3 seconds
+        document.addEventListener('DOMContentLoaded', () => {
+            const messageContainer = document.getElementById('messageContainer');
+            if (messageContainer) {
+                const messages = messageContainer.querySelectorAll('.message-alert');
+                messages.forEach(msg => {
+                    setTimeout(() => {
+                        msg.style.opacity = '0';
+                        msg.style.transform = 'translateX(100%)';
+                        setTimeout(() => {
+                            msg.remove();
+                            // Remove container if no messages left
+                            if (messageContainer.children.length === 0) {
+                                messageContainer.remove();
+                            }
+                        }, 500);
+                    }, 3000);
+                });
+            }
+        });
+
         // Dropdown functionality
         const btn = document.getElementById('userMenuButton');
         const dropdown = document.getElementById('userDropdown');
