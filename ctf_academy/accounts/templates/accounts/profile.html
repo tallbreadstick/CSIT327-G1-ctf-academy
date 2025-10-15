@@ -113,12 +113,18 @@
     <!-- MAIN CONTENT -->
     <div class="relative z-10 max-w-6xl mx-auto px-6 py-8">
         
-        <!-- Title -->
+        <!-- Title with Edit Button -->
         <div class="flex items-center justify-between mb-8 fade-up" style="animation-delay: 0.1s;">
             <h1 class="text-3xl font-bold glow-text">Profile Settings</h1>
+            <button id="editButton" type="button" class="px-6 py-2.5 bg-pink-600 hover:bg-pink-700 rounded-full font-semibold text-sm shadow-lg hover:shadow-pink-600/50 transition flex items-center space-x-2">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
+                </svg>
+                <span>Edit Profile</span>
+            </button>
         </div>
 
-        <form method="POST" class="space-y-6">
+        <form method="POST" id="profileForm" class="space-y-6">
             {% csrf_token %}
             <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
                 
@@ -130,7 +136,7 @@
                         <div class="w-32 h-32 rounded-full bg-gray-400 overflow-hidden">
                             <div class="w-full h-full bg-gradient-to-br from-gray-300 to-gray-500"></div>
                         </div>
-                        <button type="button" class="px-6 py-2 bg-pink-600 hover:bg-pink-700 rounded-full font-medium text-sm transition shadow-lg hover:shadow-pink-600/50">
+                        <button type="button" id="changePictureBtn" disabled class="px-6 py-2 bg-gray-600 rounded-full font-medium text-sm transition shadow-lg cursor-not-allowed opacity-50">
                             Change Picture
                         </button>
                     </div>
@@ -149,20 +155,20 @@
                         <div class="grid grid-cols-2 gap-3">
                             <div>
                                 <label class="block text-xs text-gray-400 mb-2">First Name</label>
-                                <input type="text" name="first_name" value="{{ user.first_name }}"
-                                    class="w-full px-4 py-2.5 bg-slate-800/80 border border-slate-700/50 rounded-lg text-white text-sm focus:outline-none focus:border-pink-600 transition">
+                                <input type="text" name="first_name" value="{{ user.first_name }}" readonly
+                                    class="w-full px-4 py-2.5 bg-slate-800/80 border border-slate-700/50 rounded-lg text-white text-sm focus:outline-none focus:border-pink-600 transition cursor-not-allowed opacity-70">
                             </div>
                             <div>
                                 <label class="block text-xs text-gray-400 mb-2">Last Name</label>
-                                <input type="text" name="last_name" value="{{ user.last_name }}"
-                                    class="w-full px-4 py-2.5 bg-slate-800/80 border border-slate-700/50 rounded-lg text-white text-sm focus:outline-none focus:border-pink-600 transition">
+                                <input type="text" name="last_name" value="{{ user.last_name }}" readonly
+                                    class="w-full px-4 py-2.5 bg-slate-800/80 border border-slate-700/50 rounded-lg text-white text-sm focus:outline-none focus:border-pink-600 transition cursor-not-allowed opacity-70">
                             </div>
                         </div>
 
                         <div>
                             <label class="block text-xs text-gray-400 mb-2">Username</label>
-                            <input type="text" name="username" value="{{ user.username }}"
-                                class="w-full px-4 py-2.5 bg-slate-800/80 border border-slate-700/50 rounded-lg text-white text-sm focus:outline-none focus:border-pink-600 transition">
+                            <input type="text" name="username" value="{{ user.username }}" readonly
+                                class="w-full px-4 py-2.5 bg-slate-800/80 border border-slate-700/50 rounded-lg text-white text-sm focus:outline-none focus:border-pink-600 transition cursor-not-allowed opacity-70">
                         </div>
 
                         <div>
@@ -173,8 +179,8 @@
                                 </svg>
                                 Email Address
                             </label>
-                            <input type="email" name="email" value="{{ user.email }}"
-                                class="w-full px-4 py-2.5 bg-slate-800/80 border border-slate-700/50 rounded-lg text-white text-sm focus:outline-none focus:border-pink-600 transition">
+                            <input type="email" name="email" value="{{ user.email }}" readonly
+                                class="w-full px-4 py-2.5 bg-slate-800/80 border border-slate-700/50 rounded-lg text-white text-sm focus:outline-none focus:border-pink-600 transition cursor-not-allowed opacity-70">
                         </div>
                     </div>
                 </div>
@@ -188,7 +194,7 @@
                         <h2 class="text-base font-semibold text-white">Security</h2>
                     </div>
 
-                    <div class="space-y-4">
+                    <div class="space-y-4" id="passwordFields">
                         <div>
                             <label class="block text-xs text-gray-400 mb-2">
                                 <svg class="w-3 h-3 inline mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -196,39 +202,43 @@
                                 </svg>
                                 Current Password
                             </label>
-                            <input type="password" name="current_password"
-                                class="w-full px-4 py-2.5 bg-slate-800/80 border border-slate-700/50 rounded-lg text-white text-sm focus:outline-none focus:border-pink-600 transition"
+                            <input type="password" name="current_password" readonly
+                                class="w-full px-4 py-2.5 bg-slate-800/80 border border-slate-700/50 rounded-lg text-white text-sm focus:outline-none focus:border-pink-600 transition cursor-not-allowed opacity-70"
                                 placeholder="••••••••">
                         </div>
 
                         <div>
                             <label class="block text-xs text-gray-400 mb-2">New Password</label>
-                            <input type="password" name="new_password"
-                                class="w-full px-4 py-2.5 bg-slate-800/80 border border-slate-700/50 rounded-lg text-white text-sm focus:outline-none focus:border-pink-600 transition"
+                            <input type="password" name="new_password" readonly
+                                class="w-full px-4 py-2.5 bg-slate-800/80 border border-slate-700/50 rounded-lg text-white text-sm focus:outline-none focus:border-pink-600 transition cursor-not-allowed opacity-70"
                                 placeholder="••••••••">
                         </div>
 
                         <div>
                             <label class="block text-xs text-gray-400 mb-2">Confirm Password</label>
-                            <input type="password" name="confirm_password"
-                                class="w-full px-4 py-2.5 bg-slate-800/80 border border-slate-700/50 rounded-lg text-white text-sm focus:outline-none focus:border-pink-600 transition"
+                            <input type="password" name="confirm_password" readonly
+                                class="w-full px-4 py-2.5 bg-slate-800/80 border border-slate-700/50 rounded-lg text-white text-sm focus:outline-none focus:border-pink-600 transition cursor-not-allowed opacity-70"
                                 placeholder="••••••••">
                         </div>
                     </div>
                 </div>
             </div>
 
-            <!-- Save Button -->
-            <div class="flex justify-end fade-up" style="animation-delay: 0.5s;">
-                <button type="submit" class="px-8 py-3 bg-pink-600 hover:bg-pink-700 rounded-full font-semibold text-sm shadow-lg hover:shadow-pink-600/50 transition">
+            <!-- Action Buttons -->
+            <div class="flex justify-end space-x-3 fade-up" style="animation-delay: 0.5s;">
+                <button type="button" id="cancelButton" class="hidden px-8 py-3 bg-gray-600 hover:bg-gray-700 rounded-full font-semibold text-sm shadow-lg transition">
+                    Cancel
+                </button>
+                <button type="submit" id="saveButton" disabled class="px-8 py-3 bg-gray-600 rounded-full font-semibold text-sm shadow-lg cursor-not-allowed opacity-50">
                     Save Changes
                 </button>
             </div>
         </form>
     </div>
 
-    <!-- Dropdown Script -->
+    <!-- Scripts -->
     <script>
+        // Dropdown functionality
         const btn = document.getElementById('userMenuButton');
         const dropdown = document.getElementById('userDropdown');
         
@@ -238,13 +248,77 @@
                 dropdown.classList.toggle('hidden');
             });
 
-            // Close dropdown when clicking outside
             document.addEventListener('click', (e) => {
                 if (!btn.contains(e.target) && !dropdown.contains(e.target)) {
                     dropdown.classList.add('hidden');
                 }
             });
         }
+
+        // Edit mode functionality
+        const editButton = document.getElementById('editButton');
+        const cancelButton = document.getElementById('cancelButton');
+        const saveButton = document.getElementById('saveButton');
+        const changePictureBtn = document.getElementById('changePictureBtn');
+        const form = document.getElementById('profileForm');
+        const inputs = form.querySelectorAll('input[type="text"], input[type="email"], input[type="password"]');
+        
+        let isEditMode = false;
+        let originalValues = {};
+
+        // Store original values
+        inputs.forEach(input => {
+            originalValues[input.name] = input.value;
+        });
+
+        editButton.addEventListener('click', () => {
+            isEditMode = true;
+            
+            // Enable all inputs
+            inputs.forEach(input => {
+                input.removeAttribute('readonly');
+                input.classList.remove('cursor-not-allowed', 'opacity-70');
+            });
+
+            // Enable change picture button
+            changePictureBtn.removeAttribute('disabled');
+            changePictureBtn.classList.remove('bg-gray-600', 'cursor-not-allowed', 'opacity-50');
+            changePictureBtn.classList.add('bg-pink-600', 'hover:bg-pink-700', 'hover:shadow-pink-600/50');
+
+            // Enable save button
+            saveButton.removeAttribute('disabled');
+            saveButton.classList.remove('bg-gray-600', 'cursor-not-allowed', 'opacity-50');
+            saveButton.classList.add('bg-pink-600', 'hover:bg-pink-700', 'hover:shadow-pink-600/50');
+
+            // Show cancel button, hide edit button
+            cancelButton.classList.remove('hidden');
+            editButton.classList.add('hidden');
+        });
+
+        cancelButton.addEventListener('click', () => {
+            isEditMode = false;
+            
+            // Restore original values
+            inputs.forEach(input => {
+                input.value = originalValues[input.name] || '';
+                input.setAttribute('readonly', true);
+                input.classList.add('cursor-not-allowed', 'opacity-70');
+            });
+
+            // Disable change picture button
+            changePictureBtn.setAttribute('disabled', true);
+            changePictureBtn.classList.add('bg-gray-600', 'cursor-not-allowed', 'opacity-50');
+            changePictureBtn.classList.remove('bg-pink-600', 'hover:bg-pink-700', 'hover:shadow-pink-600/50');
+
+            // Disable save button
+            saveButton.setAttribute('disabled', true);
+            saveButton.classList.add('bg-gray-600', 'cursor-not-allowed', 'opacity-50');
+            saveButton.classList.remove('bg-pink-600', 'hover:bg-pink-700', 'hover:shadow-pink-600/50');
+
+            // Hide cancel button, show edit button
+            cancelButton.classList.add('hidden');
+            editButton.classList.remove('hidden');
+        });
     </script>
 
 </body>
