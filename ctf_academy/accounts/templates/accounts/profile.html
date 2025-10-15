@@ -1,3 +1,4 @@
+{% load static %}
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -33,9 +34,9 @@
         }
     </style>
 </head>
-<body class="bg-slate-900 text-white min-h-screen relative overflow-hidden">
+<body class="bg-gray-900 text-white min-h-screen relative overflow-hidden">
 
-        {% if messages %}
+    {% if messages %}
     <div class="fixed top-6 right-6 space-y-2 z-50">
         {% for message in messages %}
         <div class="px-6 py-3 rounded-lg shadow-lg text-white 
@@ -46,38 +47,82 @@
     </div>
     {% endif %}
 
-
     <!-- BACKGROUND EFFECT -->
     <div class="absolute inset-0 opacity-10 bg-[radial-gradient(circle_at_center,#ec4899,transparent_70%)] animate-pulse"></div>
     <div class="absolute top-0 left-0 w-full h-full bg-[linear-gradient(60deg,#fff1,transparent_60%)]"></div>
 
+    <!-- NAVBAR (Matching home page) -->
+    <nav class="bg-gray-800/80 backdrop-blur border-b border-gray-700 z-10 relative">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex items-center justify-between h-16">
+                <!-- Logo -->
+                <div class="flex-shrink-0 flex items-center space-x-2">
+                    <img src="{% static 'accounts/images/logo.png' %}" alt="Logo" class="h-8 w-8">
+                    <span class="text-xl font-bold">CTF Academy</span>
+                </div>
+
+                <!-- Menu -->
+                <div class="hidden md:flex space-x-8 items-center">
+                    {% if user.is_superuser %}
+                    <a href="{% url 'admin_dashboard_page' %}" class="text-white hover:text-pink-400">Home</a>
+                    {% else %}
+                    <a href="{% url 'home' %}" class="text-white hover:text-pink-400">Home</a>
+                    {% endif %}
+                    <a href="/about" class="text-white hover:text-pink-400">About</a>
+                    <a href="/challenges" class="text-white hover:text-pink-400">Challenges</a>
+                    <a href="/leaderboards" class="text-white hover:text-pink-400">Leaderboards</a>
+
+                    {% if user.is_authenticated %}
+                    <!-- User Profile Dropdown -->
+                    <div class="relative ml-auto">
+                        <button id="userMenuButton" class="flex items-center space-x-3 focus:outline-none">
+                            <img src="{% static 'accounts/images/empty_profile.jpg' %}" 
+                                alt="Profile" 
+                                class="h-8 w-8 rounded-full border border-gray-600">
+                            <span class="text-white font-semibold">{{ user.username }}</span>
+                            <svg class="h-4 w-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+                            </svg>
+                        </button>
+
+                        <!-- Dropdown Menu -->
+                        <div id="userDropdown" class="absolute right-0 mt-2 w-48 bg-gray-800 rounded-md shadow-lg hidden">
+                            <a href="{% url 'profile_page' %}" class="block px-4 py-2 text-gray-300 hover:bg-gray-700 hover:text-white">
+                                Profile
+                            </a>
+                            <a href="{% url 'logout_page' %}" class="block px-4 py-2 text-gray-300 hover:bg-gray-700 hover:text-white">
+                                Logout
+                            </a>
+                        </div>
+                    </div>
+                    {% else %}
+                    <!-- Auth Buttons -->
+                    <div class="flex space-x-3 ml-6">
+                        <a href="{% url 'login_page' %}" 
+                        class="px-4 py-2 bg-pink-600 hover:bg-pink-700 rounded-lg shadow font-medium">
+                        Login
+                        </a>
+                        <a href="{% url 'register_page' %}" 
+                        class="px-4 py-2 bg-white text-gray-900 hover:bg-gray-200 rounded-lg shadow font-medium">
+                        Register
+                        </a>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </nav>
+
     <!-- MAIN CONTENT -->
     <div class="relative z-10 max-w-6xl mx-auto px-6 py-8">
         
-        <!-- Logo Section -->
-        <div class="flex items-center mb-8 fade-up">
-            <div class="flex items-center space-x-3">
-                <div class="w-8 h-8 bg-pink-600 rounded-full flex items-center justify-center">
-                    <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
-                        <path d="M10 2a8 8 0 100 16 8 8 0 000-16zM8 11a1 1 0 112 0v3a1 1 0 11-2 0v-3zm1-5a1 1 0 100 2 1 1 0 000-2z"/>
-                    </svg>
-                </div>
-                <span class="text-lg font-bold italic glow-text">CTF Academy</span>
-            </div>
-        </div>
-
-        <!-- Title and Back Button -->
+        <!-- Title -->
         <div class="flex items-center justify-between mb-8 fade-up" style="animation-delay: 0.1s;">
             <h1 class="text-3xl font-bold glow-text">Profile Settings</h1>
-            <a href="{% url 'home' %}" 
-            class="px-6 py-2 bg-slate-800 hover:bg-slate-700 text-white rounded-full text-sm font-medium border border-pink-600/30 shadow-md transition">
-                ← Back to Home
-            </a>
         </div>
 
-
         <form method="POST" class="space-y-6">
-                 {% csrf_token %}
+            {% csrf_token %}
             <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
                 
                 <!-- Profile Picture Card -->
@@ -134,7 +179,6 @@
                             <input type="email" name="email" value="{{ user.email }}"
                                 class="w-full px-4 py-2.5 bg-slate-800/80 border border-slate-700/50 rounded-lg text-white text-sm focus:outline-none focus:border-pink-600 transition">
                         </div>
-
                     </div>
                 </div>
 
@@ -185,6 +229,25 @@
             </div>
         </form>
     </div>
+
+    <!-- Dropdown Script -->
+    <script>
+        const btn = document.getElementById('userMenuButton');
+        const dropdown = document.getElementById('userDropdown');
+        
+        if (btn && dropdown) {
+            btn.addEventListener('click', () => {
+                dropdown.classList.toggle('hidden');
+            });
+
+            // Close dropdown when clicking outside
+            document.addEventListener('click', (e) => {
+                if (!btn.contains(e.target) && !dropdown.contains(e.target)) {
+                    dropdown.classList.add('hidden');
+                }
+            });
+        }
+    </script>
 
 </body>
 </html>
