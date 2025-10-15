@@ -52,7 +52,7 @@
     <div class="absolute top-0 left-0 w-full h-full bg-[linear-gradient(60deg,#fff1,transparent_60%)]"></div>
 
     <!-- NAVBAR (Matching home page) -->
-    <nav class="bg-gray-800/80 backdrop-blur border-b border-gray-700 z-10 relative">
+    <nav class="bg-gray-800/80 backdrop-blur border-b border-gray-700 relative z-20">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div class="flex items-center justify-between h-16">
                 <!-- Logo -->
@@ -74,8 +74,8 @@
 
                     {% if user.is_authenticated %}
                     <!-- User Profile Dropdown -->
-                    <div class="relative ml-auto">
-                        <button id="userMenuButton" class="flex items-center space-x-3 focus:outline-none">
+                    <div class="relative ml-auto z-50">
+                        <button id="userMenuButton" type="button" class="flex items-center space-x-3 focus:outline-none">
                             <img src="{% static 'accounts/images/empty_profile.jpg' %}" 
                                 alt="Profile" 
                                 class="h-8 w-8 rounded-full border border-gray-600">
@@ -86,11 +86,8 @@
                         </button>
 
                         <!-- Dropdown Menu -->
-                        <div id="userDropdown" class="absolute right-0 mt-2 w-48 bg-gray-800 rounded-md shadow-lg hidden">
-                            <a href="{% url 'profile_page' %}" class="block px-4 py-2 text-gray-300 hover:bg-gray-700 hover:text-white">
-                                Profile
-                            </a>
-                            <a href="{% url 'logout_page' %}" class="block px-4 py-2 text-gray-300 hover:bg-gray-700 hover:text-white">
+                        <div id="userDropdown" class="absolute right-0 mt-2 w-48 bg-gray-800 rounded-md shadow-lg hidden overflow-hidden">
+                            <a href="{% url 'logout_page' %}" class="block px-4 py-3 text-gray-300 hover:bg-gray-700 hover:text-white">
                                 Logout
                             </a>
                         </div>
@@ -236,7 +233,8 @@
         const dropdown = document.getElementById('userDropdown');
         
         if (btn && dropdown) {
-            btn.addEventListener('click', () => {
+            btn.addEventListener('click', (e) => {
+                e.stopPropagation();
                 dropdown.classList.toggle('hidden');
             });
 

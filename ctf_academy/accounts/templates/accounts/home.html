@@ -41,7 +41,7 @@
     <div class="absolute top-0 left-0 w-full h-full bg-[linear-gradient(60deg,#fff1,transparent_60%)]"></div>
 
     <!-- NAVBAR -->
-    <nav class="bg-gray-800/80 backdrop-blur border-b border-gray-700 z-10">
+    <nav class="bg-gray-800/80 backdrop-blur border-b border-gray-700 relative z-20">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div class="flex items-center justify-between h-16">
                 <!-- Logo -->
@@ -54,17 +54,17 @@
                 <div class="hidden md:flex space-x-8 items-center">
                     {% if user.is_superuser %}
                     <a href="{% url 'admin_dashboard_page' %}" class="text-pink-400 font-semibold">Home</a>
-                {% else %}
+                    {% else %}
                     <a href="{% url 'home' %}" class="text-pink-400 font-semibold">Home</a>
-                {% endif %}
+                    {% endif %}
                     <a href="/about" class="text-white hover:text-pink-400">About</a>
                     <a href="/challenges" class="text-white hover:text-pink-400">Challenges</a>
                     <a href="/leaderboards" class="text-white hover:text-pink-400">Leaderboards</a>
 
                     {% if user.is_authenticated %}
                     <!-- User Profile Dropdown -->
-                    <div class="relative ml-auto">
-                        <button id="userMenuButton" class="flex items-center space-x-3 focus:outline-none">
+                    <div class="relative ml-auto z-50">
+                        <button id="userMenuButton" type="button" class="flex items-center space-x-3 focus:outline-none">
                             <img src="{% static 'accounts/images/empty_profile.jpg' %}" 
                                 alt="Profile" 
                                 class="h-8 w-8 rounded-full border border-gray-600">
@@ -75,31 +75,15 @@
                         </button>
 
                         <!-- Dropdown Menu -->
-                            <div id="userDropdown" class="absolute right-0 mt-2 w-48 bg-gray-800 rounded-md shadow-lg hidden">
-                                <a href="{% url 'profile_page' %}" class="block px-4 py-2 text-gray-300 hover:bg-gray-700 hover:text-white">
-                                    Profile
-                                </a>
-                                <a href="{% url 'logout_page' %}" class="block px-4 py-2 text-gray-300 hover:bg-gray-700 hover:text-white">
-                                    Logout
-                                </a>
-                            </div>
-                            
-
-
-                    <script>
-                        const btn = document.getElementById('userMenuButton');
-                        const dropdown = document.getElementById('userDropdown');
-                        btn.addEventListener('click', () => {
-                            dropdown.classList.toggle('hidden');
-                        });
-
-                        // Optional: close dropdown when clicking outside
-                        document.addEventListener('click', (e) => {
-                            if (!btn.contains(e.target) && !dropdown.contains(e.target)) {
-                                dropdown.classList.add('hidden');
-                            }
-                        });
-                    </script>
+                        <div id="userDropdown" class="absolute right-0 mt-2 w-48 bg-gray-800 rounded-md shadow-lg hidden overflow-hidden">
+                            <a href="{% url 'profile_page' %}" class="block px-4 py-3 text-gray-300 hover:bg-gray-700 hover:text-white">
+                                Profile
+                            </a>
+                            <a href="{% url 'logout_page' %}" class="block px-4 py-3 text-gray-300 hover:bg-gray-700 hover:text-white">
+                                Logout
+                            </a>
+                        </div>
+                    </div>
                     {% else %}
                     <!-- Auth Buttons -->
                     <div class="flex space-x-3 ml-6">
@@ -165,15 +149,15 @@
             <h2 class="text-3xl font-bold mb-8">What People Are Saying</h2>
             <div class="grid md:grid-cols-3 gap-8">
                 <div class="p-6 bg-gray-800 rounded-xl shadow-lg">
-                    <p class="text-gray-300 italic">“CTF Academy helped me finally understand how security layers work. It’s like LeetCode but for hackers.”</p>
+                    <p class="text-gray-300 italic">"CTF Academy helped me finally understand how security layers work. It's like LeetCode but for hackers."</p>
                     <p class="mt-4 text-pink-400 font-semibold">– Florence Azriel Migallos</p>
                 </div>
                 <div class="p-6 bg-gray-800 rounded-xl shadow-lg">
-                    <p class="text-gray-300 italic">“The sandbox approach removes distractions. I can focus on logic instead of configs.”</p>
+                    <p class="text-gray-300 italic">"The sandbox approach removes distractions. I can focus on logic instead of configs."</p>
                     <p class="mt-4 text-pink-400 font-semibold">– Jay Yan Tiongzon</p>
                 </div>
                 <div class="p-6 bg-gray-800 rounded-xl shadow-lg">
-                    <p class="text-gray-300 italic">“This platform fills the gap in offensive security training we’ve had at our university for years.”</p>
+                    <p class="text-gray-300 italic">"This platform fills the gap in offensive security training we've had at our university for years."</p>
                     <p class="mt-4 text-pink-400 font-semibold">– Dr. Eugene Busico</p>
                 </div>
             </div>
@@ -205,6 +189,26 @@
             </div>
         </div>
     </footer>
+
+    <!-- Dropdown Script - Moved to bottom -->
+    <script>
+        const btn = document.getElementById('userMenuButton');
+        const dropdown = document.getElementById('userDropdown');
+        
+        if (btn && dropdown) {
+            btn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                dropdown.classList.toggle('hidden');
+            });
+
+            // Close dropdown when clicking outside
+            document.addEventListener('click', (e) => {
+                if (!btn.contains(e.target) && !dropdown.contains(e.target)) {
+                    dropdown.classList.add('hidden');
+                }
+            });
+        }
+    </script>
 
 </body>
 </html>
