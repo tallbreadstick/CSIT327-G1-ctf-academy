@@ -1,5 +1,3 @@
-# accounts/views.py
-
 from django.contrib.auth import authenticate, login, logout
 from django.contrib.auth.models import User
 from django.contrib.auth.password_validation import validate_password
@@ -10,6 +8,9 @@ from rest_framework import status
 from django.shortcuts import render, redirect
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required, user_passes_test
+# ... other imports like render, redirect, etc.
+from .models import Challenge, Category
+from django.db.models import Sum, Q, Case, When, BooleanField
 
 # --- ADDED IMPORTS FOR JWT AND API PROTECTION ---
 from .serializers import MyTokenObtainPairSerializer
@@ -193,3 +194,9 @@ def profile_page(request):
         return redirect("profile_page")
 
     return render(request, "accounts/profile.html", {"user": request.user})
+
+# --- THIS IS THE FUNCTION YOU ARE MISSING ---
+@login_required
+def challenges_page(request):
+    return render(request, "accounts/challenges.html")
+# ---------------------------------------------
