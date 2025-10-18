@@ -1,5 +1,3 @@
-# accounts/views.py
-
 from django.contrib.auth import authenticate, login, logout
 from django.contrib.auth.models import User
 from django.contrib.auth.password_validation import validate_password
@@ -10,6 +8,9 @@ from rest_framework import status
 from django.shortcuts import render, redirect
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required, user_passes_test
+# ... other imports like render, redirect, etc.
+from .models import Challenge, Category
+from django.db.models import Sum, Q, Case, When, BooleanField
 
 # --- ADDED IMPORTS FOR JWT AND API PROTECTION ---
 from .serializers import MyTokenObtainPairSerializer
@@ -126,3 +127,76 @@ def is_admin(user):
 @user_passes_test(is_admin)
 def admin_dashboard_page(request):
     return render(request, "accounts/admin_dashboard.html")
+
+
+@login_required
+def profile_page(request):
+    user = request.user
+
+    if request.method == "POST":
+        first_name = request.POST.get("first_name")
+        last_name = request.POST.get("last_name")
+        username = request.POST.get("username")
+        email = request.POST.get("email")
+        current_password = request.POST.get("current_password")
+        new_password = request.POST.get("new_password")
+        confirm_password = request.POST.get("confirm_password")
+
+        # Track changes
+        changes_made = False
+
+        # Update personal info if changed
+        if (
+            user.first_name != first_name
+            or user.last_name != last_name
+            or user.username != username
+            or user.email != email
+        ):
+            user.first_name = first_name
+            user.last_name = last_name
+            user.username = username
+            user.email = email
+            changes_made = True
+
+        # Handle password changes
+        if current_password or new_password or confirm_password:
+            if not user.check_password(current_password):
+                messages.error(request, "Current password is incorrect.")
+                return redirect("profile_page")
+
+            if new_password != confirm_password:
+                messages.error(request, "New passwords do not match.")
+                return redirect("profile_page")
+
+            try:
+                validate_password(new_password, user)
+                user.set_password(new_password)
+                messages.success(request, "Password updated successfully.")
+                changes_made = True
+            except ValidationError as e:
+                for err in e.messages:
+                    messages.error(request, err)
+                return redirect("profile_page")
+
+        # If no changes were made at all
+        if not changes_made:
+            messages.info(request, "No changes were made.")
+            return redirect("profile_page")
+
+        user.save()
+
+        # Keep session alive if password changed
+        if new_password:
+            from django.contrib.auth import update_session_auth_hash
+            update_session_auth_hash(request, user)
+
+        messages.success(request, "Profile updated successfully!")
+        return redirect("profile_page")
+
+    return render(request, "accounts/profile.html", {"user": request.user})
+
+# --- THIS IS THE FUNCTION YOU ARE MISSING ---
+@login_required
+def challenges_page(request):
+    return render(request, "accounts/challenges.html")
+# ---------------------------------------------
