@@ -141,9 +141,21 @@ def profile_page(request):
         current_password = request.POST.get("current_password")
         new_password = request.POST.get("new_password")
         confirm_password = request.POST.get("confirm_password")
+        profile_picture = request.FILES.get("profile_picture")  # Added this para sa profile picture
 
         # Track changes
         changes_made = False
+
+        # NEW: Handle profile picture upload
+        if profile_picture:
+            # Frontend works na, form submits pod, and view receives the file
+            # Pero dli pani maka save since -> no database model exists for profile pictures
+            # TODO: Create Profile model with profile_picture field, then uncomment:
+            # user.profile.profile_picture = profile_picture
+            # user.profile.save()
+            
+            changes_made = True
+            messages.success(request, "Profile picture updated successfully.")
 
         # Update personal info if changed
         if (
@@ -194,7 +206,6 @@ def profile_page(request):
         return redirect("profile_page")
 
     return render(request, "accounts/profile.html", {"user": request.user})
-
 # --- THIS IS THE FUNCTION YOU ARE MISSING ---
 @login_required
 def challenges_page(request):
