@@ -1,4 +1,4 @@
-from django.contrib.auth import authenticate, login, logout
+from django.contrib.auth import authenticate, login, logout, update_session_auth_hash
 from django.contrib.auth.models import User
 from django.contrib.auth.password_validation import validate_password
 from django.core.exceptions import ValidationError
@@ -8,8 +8,7 @@ from rest_framework import status
 from django.shortcuts import render, redirect
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required, user_passes_test
-# ... other imports like render, redirect, etc.
-from .models import Challenge, Category
+from .models import Challenge, Category, UserProfile
 from django.db.models import Sum, Q, Case, When, BooleanField
 
 # --- ADDED IMPORTS FOR JWT AND API PROTECTION ---
@@ -57,9 +56,6 @@ def home_page(request):
         return redirect("admin_dashboard_page")
     return render(request, "accounts/home.html")
 
-# To protect a page like 'about', you would add the @login_required decorator.
-# If a logged-out user tries to visit /about, they will be sent to the /login page.
-@login_required
 def about_page(request):
     return render(request, "accounts/about.html")
 
@@ -132,32 +128,24 @@ def admin_dashboard_page(request):
 @login_required
 def profile_page(request):
     user = request.user
+    profile, _ = UserProfile.objects.get_or_create(user=user)
 
     if request.method == "POST":
         first_name = request.POST.get("first_name")
         last_name = request.POST.get("last_name")
         username = request.POST.get("username")
         email = request.POST.get("email")
+        bio = request.POST.get("bio", "")
+        base64_image = request.POST.get("base64_image")
+        image_file = request.FILES.get("profile_image")  # from <input type="file">
         current_password = request.POST.get("current_password")
         new_password = request.POST.get("new_password")
         confirm_password = request.POST.get("confirm_password")
         profile_picture = request.FILES.get("profile_picture")  # Added this para sa profile picture
 
-        # Track changes
         changes_made = False
 
-        # NEW: Handle profile picture upload
-        if profile_picture:
-            # Frontend works na, form submits pod, and view receives the file
-            # Pero dli pani maka save since -> no database model exists for profile pictures
-            # TODO: Create Profile model with profile_picture field, then uncomment:
-            # user.profile.profile_picture = profile_picture
-            # user.profile.save()
-            
-            changes_made = True
-            messages.success(request, "Profile picture updated successfully.")
-
-        # Update personal info if changed
+        # --- Update user info ---
         if (
             user.first_name != first_name
             or user.last_name != last_name
@@ -170,7 +158,7 @@ def profile_page(request):
             user.email = email
             changes_made = True
 
-        # Handle password changes
+        # --- Handle password change ---
         if current_password or new_password or confirm_password:
             if not user.check_password(current_password):
                 messages.error(request, "Current password is incorrect.")
@@ -183,6 +171,7 @@ def profile_page(request):
             try:
                 validate_password(new_password, user)
                 user.set_password(new_password)
+                update_session_auth_hash(request, user)
                 messages.success(request, "Password updated successfully.")
                 changes_made = True
             except ValidationError as e:
@@ -190,22 +179,52 @@ def profile_page(request):
                     messages.error(request, err)
                 return redirect("profile_page")
 
-        # If no changes were made at all
-        if not changes_made:
+        # --- Update bio ---
+        if bio != profile.bio:
+            profile.bio = bio
+            changes_made = True
+
+        # --- Handle image update (base64 or file upload) ---
+        import base64
+        if base64_image:
+            try:
+                profile.set_base64_image(base64_image)
+                changes_made = True
+            except Exception as e:
+                messages.error(request, f"Error saving base64 image: {e}")
+                return redirect("profile_page")
+
+        elif image_file:
+            try:
+                # Convert uploaded file → base64 → binary
+                encoded = base64.b64encode(image_file.read()).decode('utf-8')
+                profile.set_base64_image(encoded)
+                changes_made = True
+            except Exception as e:
+                messages.error(request, f"Error saving image file: {e}")
+                return redirect("profile_page")
+
+        # --- Save changes ---
+        if changes_made:
+            user.save()
+            profile.save()
+            messages.success(request, "Profile updated successfully!")
+        else:
             messages.info(request, "No changes were made.")
-            return redirect("profile_page")
 
-        user.save()
-
-        # Keep session alive if password changed
-        if new_password:
-            from django.contrib.auth import update_session_auth_hash
-            update_session_auth_hash(request, user)
-
-        messages.success(request, "Profile updated successfully!")
         return redirect("profile_page")
 
-    return render(request, "accounts/profile.html", {"user": request.user})
+    # --- Prepare data for rendering ---
+    image_base64 = profile.get_base64_image()
+    image_uri = f"data:image/jpeg;base64,{image_base64}" if image_base64 else None
+
+    return render(request, "accounts/profile.html", {
+        "user": user,
+        "profile": profile,
+        "image_uri": image_uri,
+    })
+
+
 # --- THIS IS THE FUNCTION YOU ARE MISSING ---
 @login_required
 def challenges_page(request):

@@ -128,35 +128,25 @@
             {% csrf_token %}
             <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
                 
-                <!-- Profile Picture Card -->
+                <!-- Profile Picture Card (fixed: no nested form) -->
                 <div class="glass-card rounded-2xl p-6 fade-up flex flex-col items-center justify-center" style="animation-delay: 0.2s;">
                     <h2 class="text-base font-semibold text-white mb-6 self-start">Profile Picture</h2>
-                    
+
                     <div class="flex flex-col items-center flex-grow justify-center space-y-4">
-                        <div class="relative w-32 h-32 rounded-full overflow-hidden border-2 border-pink-500/30 group">
-                            <img id="profileImagePreview" 
-                                 src="{% static 'accounts/images/empty_profile.jpg' %}" 
-                                 alt="Profile Picture"
-                                 class="w-full h-full object-cover">
-                            <div id="imageOverlay" class="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center cursor-pointer hidden">
-                                <svg class="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"/>
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"/>
-                                </svg>
-                            </div>
+                        <div class="w-32 h-32 rounded-full bg-gray-400 overflow-hidden">
+                            {% if image_uri %}
+                                <img id="profilePreview" src="{{ image_uri }}" alt="Profile Picture" class="w-full h-full object-cover">
+                            {% else %}
+                                <img id="profilePreview" src="{% static 'accounts/images/empty_profile.jpg' %}" alt="Default" class="w-full h-full object-cover">
+                            {% endif %}
                         </div>
-                        
-                        <!-- Hidden file input -->
-                        <input type="file" 
-                               id="profilePictureInput" 
-                               name="profile_picture" 
-                               accept="image/*"
-                               class="hidden">
-                        
-                        <button type="button" 
-                                id="changePictureBtn" 
-                                disabled 
-                                class="px-6 py-2 bg-gray-600 rounded-full font-medium text-sm transition shadow-lg cursor-not-allowed opacity-50">
+
+                        <!-- Hidden file input and hidden base64 holder (placed inside the main form, not nested) -->
+                        <input type="file" id="profileImageInput" accept="image/*" class="hidden">
+                        <input type="hidden" name="base64_image" id="base64_image" value="">
+
+                        <button type="button" id="changePictureBtn" disabled
+                            class="px-6 py-2 bg-gray-600 rounded-full font-medium text-sm transition shadow-lg cursor-not-allowed opacity-50">
                             Change Picture
                         </button>
                         
@@ -264,30 +254,34 @@
 
     <!-- Scripts -->
     <script>
-        // Auto-dismiss messages after 3 seconds
-        document.addEventListener('DOMContentLoaded', () => {
-            const messageContainer = document.getElementById('messageContainer');
-            if (messageContainer) {
-                const messages = messageContainer.querySelectorAll('.message-alert');
-                messages.forEach(msg => {
+    document.addEventListener('DOMContentLoaded', () => {
+        /* ===============================
+        AUTO-DISMISS MESSAGES
+        =============================== */
+        const messageContainer = document.getElementById('messageContainer');
+        if (messageContainer) {
+            const messages = messageContainer.querySelectorAll('.message-alert');
+            messages.forEach(msg => {
+                setTimeout(() => {
+                    msg.style.transition = 'all 0.5s ease';
+                    msg.style.opacity = '0';
+                    msg.style.transform = 'translateX(100%)';
                     setTimeout(() => {
-                        msg.style.opacity = '0';
-                        msg.style.transform = 'translateX(100%)';
-                        setTimeout(() => {
-                            msg.remove();
-                            if (messageContainer.children.length === 0) {
-                                messageContainer.remove();
-                            }
-                        }, 500);
-                    }, 3000);
-                });
-            }
-        });
+                        msg.remove();
+                        if (messageContainer.children.length === 0) {
+                            messageContainer.remove();
+                        }
+                    }, 500);
+                }, 3000);
+            });
+        }
 
-        // Dropdown functionality
+        /* ===============================
+        DROPDOWN MENU FUNCTIONALITY
+        =============================== */
         const btn = document.getElementById('userMenuButton');
         const dropdown = document.getElementById('userDropdown');
-        
+
         if (btn && dropdown) {
             btn.addEventListener('click', (e) => {
                 e.stopPropagation();
@@ -301,139 +295,105 @@
             });
         }
 
-        // Profile picture functionality
-        const profilePictureInput = document.getElementById('profilePictureInput');
-        const profileImagePreview = document.getElementById('profileImagePreview');
-        const changePictureBtn = document.getElementById('changePictureBtn');
-        const removePictureBtn = document.getElementById('removePictureBtn');
-        const imageOverlay = document.getElementById('imageOverlay');
-        
-        let currentImageFile = null;
-        let originalImageSrc = profileImagePreview.src;
-
-        // Change picture button click
-        changePictureBtn.addEventListener('click', () => {
-            profilePictureInput.click();
-        });
-
-        // Image overlay click (when in edit mode)
-        imageOverlay.addEventListener('click', () => {
-            profilePictureInput.click();
-        });
-
-        // File input change
-        profilePictureInput.addEventListener('change', (e) => {
-            const file = e.target.files[0];
-            
-            if (file) {
-                // Validate file type
-                if (!file.type.startsWith('image/')) {
-                    alert('Please select a valid image file.');
-                    profilePictureInput.value = '';
-                    return;
-                }
-
-                // Validate file size (max 5MB)
-                if (file.size > 5 * 1024 * 1024) {
-                    alert('Image size should be less than 5MB.');
-                    profilePictureInput.value = '';
-                    return;
-                }
-
-                // Preview the image
-                const reader = new FileReader();
-                reader.onload = (event) => {
-                    profileImagePreview.src = event.target.result;
-                    currentImageFile = file;
-                    removePictureBtn.classList.remove('hidden');
-                };
-                reader.readAsDataURL(file);
-            }
-        });
-
-        // Remove picture button
-        removePictureBtn.addEventListener('click', () => {
-            profileImagePreview.src = originalImageSrc;
-            profilePictureInput.value = '';
-            currentImageFile = null;
-            removePictureBtn.classList.add('hidden');
-        });
-
-        // Edit mode functionality
+        /* ===============================
+        PROFILE EDIT MODE & IMAGE UPLOAD
+        =============================== */
         const editButton = document.getElementById('editButton');
         const cancelButton = document.getElementById('cancelButton');
         const saveButton = document.getElementById('saveButton');
         const form = document.getElementById('profileForm');
-        const inputs = form.querySelectorAll('input[type="text"], input[type="email"], input[type="password"]');
-        
-        let isEditMode = false;
-        let originalValues = {};
 
-        // Store original values
-        inputs.forEach(input => {
-            originalValues[input.name] = input.value;
-        });
+        // Image elements (must exist in the template replacement above)
+        const imageInput = document.getElementById('profileImageInput'); // hidden file input
+        const base64Input = document.getElementById('base64_image');    // hidden base64 field
+        const previewImage = document.getElementById('profilePreview'); // img preview
 
-        editButton.addEventListener('click', () => {
-            isEditMode = true;
-            
-            // Enable all inputs
+        if (form && editButton && cancelButton && saveButton && changePictureBtn) {
+            const inputs = form.querySelectorAll('input[type="text"], input[type="email"], input[type="password"], textarea');
+            let originalValues = {};
+
+            // Capture original values
             inputs.forEach(input => {
-                input.removeAttribute('readonly');
-                input.classList.remove('cursor-not-allowed', 'opacity-70');
+                originalValues[input.name] = input.value;
             });
 
-            // Enable change picture button
-            changePictureBtn.removeAttribute('disabled');
-            changePictureBtn.classList.remove('bg-gray-600', 'cursor-not-allowed', 'opacity-50');
-            changePictureBtn.classList.add('bg-pink-600', 'hover:bg-pink-700', 'hover:shadow-pink-600/50');
+            // Toggle to edit mode
+            editButton.addEventListener('click', () => {
+                inputs.forEach(input => {
+                    input.removeAttribute('readonly');
+                    input.classList.remove('cursor-not-allowed', 'opacity-70');
+                });
 
-            // Show image overlay
-            imageOverlay.classList.remove('hidden');
+                changePictureBtn.removeAttribute('disabled');
+                changePictureBtn.classList.remove('bg-gray-600', 'cursor-not-allowed', 'opacity-50');
+                changePictureBtn.classList.add('bg-pink-600', 'hover:bg-pink-700', 'hover:shadow-pink-600/50');
 
-            // Enable save button
-            saveButton.removeAttribute('disabled');
-            saveButton.classList.remove('bg-gray-600', 'cursor-not-allowed', 'opacity-50');
-            saveButton.classList.add('bg-pink-600', 'hover:bg-pink-700', 'hover:shadow-pink-600/50');
+                saveButton.removeAttribute('disabled');
+                saveButton.classList.remove('bg-gray-600', 'cursor-not-allowed', 'opacity-50');
+                saveButton.classList.add('bg-pink-600', 'hover:bg-pink-700', 'hover:shadow-pink-600/50');
 
-            // Show cancel button, hide edit button
-            cancelButton.classList.remove('hidden');
-            editButton.classList.add('hidden');
-        });
-
-        cancelButton.addEventListener('click', () => {
-            isEditMode = false;
-            
-            // Restore original values
-            inputs.forEach(input => {
-                input.value = originalValues[input.name] || '';
-                input.setAttribute('readonly', true);
-                input.classList.add('cursor-not-allowed', 'opacity-70');
+                cancelButton.classList.remove('hidden');
+                editButton.classList.add('hidden');
             });
 
-            // Reset profile picture
-            profileImagePreview.src = originalImageSrc;
-            profilePictureInput.value = '';
-            currentImageFile = null;
-            removePictureBtn.classList.add('hidden');
+            // Revert changes
+            cancelButton.addEventListener('click', () => {
+                inputs.forEach(input => {
+                    input.value = originalValues[input.name] || '';
+                    input.setAttribute('readonly', true);
+                    input.classList.add('cursor-not-allowed', 'opacity-70');
+                });
 
-            // Disable change picture button
-            changePictureBtn.setAttribute('disabled', true);
-            changePictureBtn.classList.add('bg-gray-600', 'cursor-not-allowed', 'opacity-50');
-            changePictureBtn.classList.remove('bg-pink-600', 'hover:bg-pink-700', 'hover:shadow-pink-600/50');
+                // Reset preview and base64 value if the user had selected a file
+                if (previewImage && previewImage.dataset.original) {
+                    previewImage.src = previewImage.dataset.original;
+                }
+                base64Input.value = '';
 
-            // Hide image overlay
-            imageOverlay.classList.add('hidden');
+                changePictureBtn.setAttribute('disabled', true);
+                changePictureBtn.classList.add('bg-gray-600', 'cursor-not-allowed', 'opacity-50');
+                changePictureBtn.classList.remove('bg-pink-600', 'hover:bg-pink-700', 'hover:shadow-pink-600/50');
 
-            // Disable save button
-            saveButton.setAttribute('disabled', true);
-            saveButton.classList.add('bg-gray-600', 'cursor-not-allowed', 'opacity-50');
-            saveButton.classList.remove('bg-pink-600', 'hover:bg-pink-700', 'hover:shadow-pink-600/50');
+                saveButton.setAttribute('disabled', true);
+                saveButton.classList.add('bg-gray-600', 'cursor-not-allowed', 'opacity-50');
+                saveButton.classList.remove('bg-pink-600', 'hover:bg-pink-700', 'hover:shadow-pink-600/50');
 
-            // Hide cancel button, show edit button
-            cancelButton.classList.add('hidden');
-            editButton.classList.remove('hidden');
-        });
+                cancelButton.classList.add('hidden');
+                editButton.classList.remove('hidden');
+            });
+
+            // Change picture button opens file picker
+            changePictureBtn.addEventListener('click', (e) => {
+                e.preventDefault();
+                if (imageInput) imageInput.click();
+            });
+
+            // Convert selected file to base64 and preview it. Do NOT auto-submit.
+            if (imageInput) {
+                imageInput.addEventListener('change', (e) => {
+                    const file = e.target.files && e.target.files[0];
+                    if (!file) return;
+
+                    const reader = new FileReader();
+                    reader.onload = function (ev) {
+                        const dataUrl = ev.target.result; // "data:image/xxx;base64,AAAA..."
+                        // update preview
+                        if (previewImage) {
+                            // store original src so cancel can revert
+                            if (!previewImage.dataset.original) {
+                                previewImage.dataset.original = previewImage.src;
+                            }
+                            previewImage.src = dataUrl;
+                        }
+                        // store base64 without the data:* prefix (your backend expects raw base64)
+                        const rawBase64 = dataUrl.split(',')[1] || '';
+                        if (base64Input) base64Input.value = rawBase64;
+                    };
+                    reader.readAsDataURL(file);
+                });
+            }
+        }
+    });
     </script>
 
 </body>
