@@ -124,7 +124,7 @@
             </button>
         </div>
 
-        <form method="POST" id="profileForm" class="space-y-6">
+        <form method="POST" id="profileForm" enctype="multipart/form-data" class="space-y-6">
             {% csrf_token %}
             <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
                 
@@ -133,11 +133,37 @@
                     <h2 class="text-base font-semibold text-white mb-6 self-start">Profile Picture</h2>
                     
                     <div class="flex flex-col items-center flex-grow justify-center space-y-4">
-                        <div class="w-32 h-32 rounded-full bg-gray-400 overflow-hidden">
-                            <div class="w-full h-full bg-gradient-to-br from-gray-300 to-gray-500"></div>
+                        <div class="relative w-32 h-32 rounded-full overflow-hidden border-2 border-pink-500/30 group">
+                            <img id="profileImagePreview" 
+                                 src="{% static 'accounts/images/empty_profile.jpg' %}" 
+                                 alt="Profile Picture"
+                                 class="w-full h-full object-cover">
+                            <div id="imageOverlay" class="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center cursor-pointer hidden">
+                                <svg class="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"/>
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"/>
+                                </svg>
+                            </div>
                         </div>
-                        <button type="button" id="changePictureBtn" disabled class="px-6 py-2 bg-gray-600 rounded-full font-medium text-sm transition shadow-lg cursor-not-allowed opacity-50">
+                        
+                        <!-- Hidden file input -->
+                        <input type="file" 
+                               id="profilePictureInput" 
+                               name="profile_picture" 
+                               accept="image/*"
+                               class="hidden">
+                        
+                        <button type="button" 
+                                id="changePictureBtn" 
+                                disabled 
+                                class="px-6 py-2 bg-gray-600 rounded-full font-medium text-sm transition shadow-lg cursor-not-allowed opacity-50">
                             Change Picture
+                        </button>
+                        
+                        <button type="button"
+                                id="removePictureBtn"
+                                class="hidden px-4 py-1.5 text-xs text-red-400 hover:text-red-300 transition">
+                            Remove Picture
                         </button>
                     </div>
                 </div>
@@ -249,7 +275,6 @@
                         msg.style.transform = 'translateX(100%)';
                         setTimeout(() => {
                             msg.remove();
-                            // Remove container if no messages left
                             if (messageContainer.children.length === 0) {
                                 messageContainer.remove();
                             }
@@ -276,11 +301,68 @@
             });
         }
 
+        // Profile picture functionality
+        const profilePictureInput = document.getElementById('profilePictureInput');
+        const profileImagePreview = document.getElementById('profileImagePreview');
+        const changePictureBtn = document.getElementById('changePictureBtn');
+        const removePictureBtn = document.getElementById('removePictureBtn');
+        const imageOverlay = document.getElementById('imageOverlay');
+        
+        let currentImageFile = null;
+        let originalImageSrc = profileImagePreview.src;
+
+        // Change picture button click
+        changePictureBtn.addEventListener('click', () => {
+            profilePictureInput.click();
+        });
+
+        // Image overlay click (when in edit mode)
+        imageOverlay.addEventListener('click', () => {
+            profilePictureInput.click();
+        });
+
+        // File input change
+        profilePictureInput.addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            
+            if (file) {
+                // Validate file type
+                if (!file.type.startsWith('image/')) {
+                    alert('Please select a valid image file.');
+                    profilePictureInput.value = '';
+                    return;
+                }
+
+                // Validate file size (max 5MB)
+                if (file.size > 5 * 1024 * 1024) {
+                    alert('Image size should be less than 5MB.');
+                    profilePictureInput.value = '';
+                    return;
+                }
+
+                // Preview the image
+                const reader = new FileReader();
+                reader.onload = (event) => {
+                    profileImagePreview.src = event.target.result;
+                    currentImageFile = file;
+                    removePictureBtn.classList.remove('hidden');
+                };
+                reader.readAsDataURL(file);
+            }
+        });
+
+        // Remove picture button
+        removePictureBtn.addEventListener('click', () => {
+            profileImagePreview.src = originalImageSrc;
+            profilePictureInput.value = '';
+            currentImageFile = null;
+            removePictureBtn.classList.add('hidden');
+        });
+
         // Edit mode functionality
         const editButton = document.getElementById('editButton');
         const cancelButton = document.getElementById('cancelButton');
         const saveButton = document.getElementById('saveButton');
-        const changePictureBtn = document.getElementById('changePictureBtn');
         const form = document.getElementById('profileForm');
         const inputs = form.querySelectorAll('input[type="text"], input[type="email"], input[type="password"]');
         
@@ -306,6 +388,9 @@
             changePictureBtn.classList.remove('bg-gray-600', 'cursor-not-allowed', 'opacity-50');
             changePictureBtn.classList.add('bg-pink-600', 'hover:bg-pink-700', 'hover:shadow-pink-600/50');
 
+            // Show image overlay
+            imageOverlay.classList.remove('hidden');
+
             // Enable save button
             saveButton.removeAttribute('disabled');
             saveButton.classList.remove('bg-gray-600', 'cursor-not-allowed', 'opacity-50');
@@ -326,10 +411,19 @@
                 input.classList.add('cursor-not-allowed', 'opacity-70');
             });
 
+            // Reset profile picture
+            profileImagePreview.src = originalImageSrc;
+            profilePictureInput.value = '';
+            currentImageFile = null;
+            removePictureBtn.classList.add('hidden');
+
             // Disable change picture button
             changePictureBtn.setAttribute('disabled', true);
             changePictureBtn.classList.add('bg-gray-600', 'cursor-not-allowed', 'opacity-50');
             changePictureBtn.classList.remove('bg-pink-600', 'hover:bg-pink-700', 'hover:shadow-pink-600/50');
+
+            // Hide image overlay
+            imageOverlay.classList.add('hidden');
 
             // Disable save button
             saveButton.setAttribute('disabled', true);
