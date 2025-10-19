@@ -128,15 +128,25 @@
             {% csrf_token %}
             <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
                 
-                <!-- Profile Picture Card -->
+                <!-- Profile Picture Card (fixed: no nested form) -->
                 <div class="glass-card rounded-2xl p-6 fade-up flex flex-col items-center justify-center" style="animation-delay: 0.2s;">
                     <h2 class="text-base font-semibold text-white mb-6 self-start">Profile Picture</h2>
-                    
+
                     <div class="flex flex-col items-center flex-grow justify-center space-y-4">
                         <div class="w-32 h-32 rounded-full bg-gray-400 overflow-hidden">
-                            <div class="w-full h-full bg-gradient-to-br from-gray-300 to-gray-500"></div>
+                            {% if image_uri %}
+                                <img id="profilePreview" src="{{ image_uri }}" alt="Profile Picture" class="w-full h-full object-cover">
+                            {% else %}
+                                <img id="profilePreview" src="{% static 'accounts/images/empty_profile.jpg' %}" alt="Default" class="w-full h-full object-cover">
+                            {% endif %}
                         </div>
-                        <button type="button" id="changePictureBtn" disabled class="px-6 py-2 bg-gray-600 rounded-full font-medium text-sm transition shadow-lg cursor-not-allowed opacity-50">
+
+                        <!-- Hidden file input and hidden base64 holder (placed inside the main form, not nested) -->
+                        <input type="file" id="profileImageInput" accept="image/*" class="hidden">
+                        <input type="hidden" name="base64_image" id="base64_image" value="">
+
+                        <button type="button" id="changePictureBtn" disabled
+                            class="px-6 py-2 bg-gray-600 rounded-full font-medium text-sm transition shadow-lg cursor-not-allowed opacity-50">
                             Change Picture
                         </button>
                     </div>
@@ -238,31 +248,34 @@
 
     <!-- Scripts -->
     <script>
-        // Auto-dismiss messages after 3 seconds
-        document.addEventListener('DOMContentLoaded', () => {
-            const messageContainer = document.getElementById('messageContainer');
-            if (messageContainer) {
-                const messages = messageContainer.querySelectorAll('.message-alert');
-                messages.forEach(msg => {
+    document.addEventListener('DOMContentLoaded', () => {
+        /* ===============================
+        AUTO-DISMISS MESSAGES
+        =============================== */
+        const messageContainer = document.getElementById('messageContainer');
+        if (messageContainer) {
+            const messages = messageContainer.querySelectorAll('.message-alert');
+            messages.forEach(msg => {
+                setTimeout(() => {
+                    msg.style.transition = 'all 0.5s ease';
+                    msg.style.opacity = '0';
+                    msg.style.transform = 'translateX(100%)';
                     setTimeout(() => {
-                        msg.style.opacity = '0';
-                        msg.style.transform = 'translateX(100%)';
-                        setTimeout(() => {
-                            msg.remove();
-                            // Remove container if no messages left
-                            if (messageContainer.children.length === 0) {
-                                messageContainer.remove();
-                            }
-                        }, 500);
-                    }, 3000);
-                });
-            }
-        });
+                        msg.remove();
+                        if (messageContainer.children.length === 0) {
+                            messageContainer.remove();
+                        }
+                    }, 500);
+                }, 3000);
+            });
+        }
 
-        // Dropdown functionality
+        /* ===============================
+        DROPDOWN MENU FUNCTIONALITY
+        =============================== */
         const btn = document.getElementById('userMenuButton');
         const dropdown = document.getElementById('userDropdown');
-        
+
         if (btn && dropdown) {
             btn.addEventListener('click', (e) => {
                 e.stopPropagation();
@@ -276,70 +289,106 @@
             });
         }
 
-        // Edit mode functionality
+        /* ===============================
+        PROFILE EDIT MODE & IMAGE UPLOAD
+        =============================== */
         const editButton = document.getElementById('editButton');
         const cancelButton = document.getElementById('cancelButton');
         const saveButton = document.getElementById('saveButton');
         const changePictureBtn = document.getElementById('changePictureBtn');
         const form = document.getElementById('profileForm');
-        const inputs = form.querySelectorAll('input[type="text"], input[type="email"], input[type="password"]');
-        
-        let isEditMode = false;
-        let originalValues = {};
 
-        // Store original values
-        inputs.forEach(input => {
-            originalValues[input.name] = input.value;
-        });
+        // Image elements (must exist in the template replacement above)
+        const imageInput = document.getElementById('profileImageInput'); // hidden file input
+        const base64Input = document.getElementById('base64_image');    // hidden base64 field
+        const previewImage = document.getElementById('profilePreview'); // img preview
 
-        editButton.addEventListener('click', () => {
-            isEditMode = true;
-            
-            // Enable all inputs
+        if (form && editButton && cancelButton && saveButton && changePictureBtn) {
+            const inputs = form.querySelectorAll('input[type="text"], input[type="email"], input[type="password"], textarea');
+            let originalValues = {};
+
+            // Capture original values
             inputs.forEach(input => {
-                input.removeAttribute('readonly');
-                input.classList.remove('cursor-not-allowed', 'opacity-70');
+                originalValues[input.name] = input.value;
             });
 
-            // Enable change picture button
-            changePictureBtn.removeAttribute('disabled');
-            changePictureBtn.classList.remove('bg-gray-600', 'cursor-not-allowed', 'opacity-50');
-            changePictureBtn.classList.add('bg-pink-600', 'hover:bg-pink-700', 'hover:shadow-pink-600/50');
+            // Toggle to edit mode
+            editButton.addEventListener('click', () => {
+                inputs.forEach(input => {
+                    input.removeAttribute('readonly');
+                    input.classList.remove('cursor-not-allowed', 'opacity-70');
+                });
 
-            // Enable save button
-            saveButton.removeAttribute('disabled');
-            saveButton.classList.remove('bg-gray-600', 'cursor-not-allowed', 'opacity-50');
-            saveButton.classList.add('bg-pink-600', 'hover:bg-pink-700', 'hover:shadow-pink-600/50');
+                changePictureBtn.removeAttribute('disabled');
+                changePictureBtn.classList.remove('bg-gray-600', 'cursor-not-allowed', 'opacity-50');
+                changePictureBtn.classList.add('bg-pink-600', 'hover:bg-pink-700', 'hover:shadow-pink-600/50');
 
-            // Show cancel button, hide edit button
-            cancelButton.classList.remove('hidden');
-            editButton.classList.add('hidden');
-        });
+                saveButton.removeAttribute('disabled');
+                saveButton.classList.remove('bg-gray-600', 'cursor-not-allowed', 'opacity-50');
+                saveButton.classList.add('bg-pink-600', 'hover:bg-pink-700', 'hover:shadow-pink-600/50');
 
-        cancelButton.addEventListener('click', () => {
-            isEditMode = false;
-            
-            // Restore original values
-            inputs.forEach(input => {
-                input.value = originalValues[input.name] || '';
-                input.setAttribute('readonly', true);
-                input.classList.add('cursor-not-allowed', 'opacity-70');
+                cancelButton.classList.remove('hidden');
+                editButton.classList.add('hidden');
             });
 
-            // Disable change picture button
-            changePictureBtn.setAttribute('disabled', true);
-            changePictureBtn.classList.add('bg-gray-600', 'cursor-not-allowed', 'opacity-50');
-            changePictureBtn.classList.remove('bg-pink-600', 'hover:bg-pink-700', 'hover:shadow-pink-600/50');
+            // Revert changes
+            cancelButton.addEventListener('click', () => {
+                inputs.forEach(input => {
+                    input.value = originalValues[input.name] || '';
+                    input.setAttribute('readonly', true);
+                    input.classList.add('cursor-not-allowed', 'opacity-70');
+                });
 
-            // Disable save button
-            saveButton.setAttribute('disabled', true);
-            saveButton.classList.add('bg-gray-600', 'cursor-not-allowed', 'opacity-50');
-            saveButton.classList.remove('bg-pink-600', 'hover:bg-pink-700', 'hover:shadow-pink-600/50');
+                // Reset preview and base64 value if the user had selected a file
+                if (previewImage && previewImage.dataset.original) {
+                    previewImage.src = previewImage.dataset.original;
+                }
+                base64Input.value = '';
 
-            // Hide cancel button, show edit button
-            cancelButton.classList.add('hidden');
-            editButton.classList.remove('hidden');
-        });
+                changePictureBtn.setAttribute('disabled', true);
+                changePictureBtn.classList.add('bg-gray-600', 'cursor-not-allowed', 'opacity-50');
+                changePictureBtn.classList.remove('bg-pink-600', 'hover:bg-pink-700', 'hover:shadow-pink-600/50');
+
+                saveButton.setAttribute('disabled', true);
+                saveButton.classList.add('bg-gray-600', 'cursor-not-allowed', 'opacity-50');
+                saveButton.classList.remove('bg-pink-600', 'hover:bg-pink-700', 'hover:shadow-pink-600/50');
+
+                cancelButton.classList.add('hidden');
+                editButton.classList.remove('hidden');
+            });
+
+            // Change picture button opens file picker
+            changePictureBtn.addEventListener('click', (e) => {
+                e.preventDefault();
+                if (imageInput) imageInput.click();
+            });
+
+            // Convert selected file to base64 and preview it. Do NOT auto-submit.
+            if (imageInput) {
+                imageInput.addEventListener('change', (e) => {
+                    const file = e.target.files && e.target.files[0];
+                    if (!file) return;
+
+                    const reader = new FileReader();
+                    reader.onload = function (ev) {
+                        const dataUrl = ev.target.result; // "data:image/xxx;base64,AAAA..."
+                        // update preview
+                        if (previewImage) {
+                            // store original src so cancel can revert
+                            if (!previewImage.dataset.original) {
+                                previewImage.dataset.original = previewImage.src;
+                            }
+                            previewImage.src = dataUrl;
+                        }
+                        // store base64 without the data:* prefix (your backend expects raw base64)
+                        const rawBase64 = dataUrl.split(',')[1] || '';
+                        if (base64Input) base64Input.value = rawBase64;
+                    };
+                    reader.readAsDataURL(file);
+                });
+            }
+        }
+    });
     </script>
 
 </body>
