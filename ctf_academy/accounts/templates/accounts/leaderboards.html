@@ -1,0 +1,398 @@
+{% load static tailwind_tags %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>CTF Academy - Leaderboards</title>
+    <link rel="icon" type="image/png" href="{% static 'accounts/images/logo.png' %}">
+    {% tailwind_css %}
+
+    <style>
+        html, body {
+            overflow: auto !important;
+        }
+        img {
+            max-width: 100% !important;
+            max-height: 100% !important;
+            object-fit: cover !important;
+        }
+        .w-10 {
+            width: 2.5rem !important;
+            height: 2.5rem !important;
+        }
+        .w-12 {
+            width: 3rem !important;
+            height: 3rem !important;
+        }
+        .w-20 {
+            width: 5rem !important;
+            height: 5rem !important;
+        }
+        .w-24 {
+            width: 6rem !important;
+            height: 6rem !important;
+        }
+        @keyframes fadeInUp {
+            from { opacity: 0; transform: translateY(30px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        @keyframes bg-pan {
+            0% { background-position: 0% center; }
+            100% { background-position: 200% center; }
+        }
+        @keyframes shimmer {
+            0% { background-position: -1000px 0; }
+            100% { background-position: 1000px 0; }
+        }
+        .fade-up { animation: fadeInUp 1s ease-out forwards; }
+        .glow-text {
+            background: linear-gradient(90deg, #ec4899, #f9a8d4, #ffffff);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-size: 200% auto;
+            animation: bg-pan 8s linear infinite;
+        }
+        .gold-gradient {
+            background: linear-gradient(135deg, #ffd700, #ffed4e, #ffd700);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        .silver-gradient {
+            background: linear-gradient(135deg, #c0c0c0, #e8e8e8, #c0c0c0);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        .bronze-gradient {
+            background: linear-gradient(135deg, #cd7f32, #e8a87c, #cd7f32);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        .rank-badge {
+            position: relative;
+            overflow: hidden;
+        }
+        .rank-badge::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.3), transparent);
+            animation: shimmer 3s infinite;
+        }
+    </style>
+</head>
+<body class="bg-gray-900 text-white flex flex-col min-h-screen relative overflow-hidden">
+
+    <!-- BACKGROUND EFFECT -->
+    <div class="absolute inset-0 opacity-10 bg-[radial-gradient(circle_at_center,#ec4899,transparent_70%)] animate-pulse"></div>
+    <div class="absolute top-0 left-0 w-full h-full bg-[linear-gradient(60deg,#fff1,transparent_60%)]"></div>
+
+    <!-- NAVBAR -->
+    <nav class="bg-gray-800/80 backdrop-blur border-b border-gray-700 relative z-20">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex items-center justify-between h-16">
+                <!-- Logo -->
+                <div class="flex-shrink-0 flex items-center space-x-2">
+                    <img src="{% static 'accounts/images/logo.png' %}" alt="Logo" class="h-8 w-8">
+                    <span class="text-xl font-bold">CTF Academy</span>
+                </div>
+
+                <!-- Menu -->
+                <div class="hidden md:flex space-x-8 items-center">
+                    {% if user.is_superuser %}
+                    <a href="{% url 'admin_dashboard_page' %}" class="text-white hover:text-pink-400">Home</a>
+                    {% else %}
+                    <a href="{% url 'home' %}" class="text-white hover:text-pink-400">Home</a>
+                    {% endif %}
+                    <a href="/about" class="text-white hover:text-pink-400">About</a>
+                    <a href="/challenges" class="text-white hover:text-pink-400">Challenges</a>
+                    <a href="/leaderboards" class="text-pink-400 font-semibold">Leaderboards</a>
+
+                    {% if user.is_authenticated %}
+                    <!-- User Profile Dropdown -->
+                    <div class="relative ml-auto z-50">
+                        <button id="userMenuButton" type="button" class="flex items-center space-x-3 focus:outline-none">
+                            <img src="{% static 'accounts/images/empty_profile.jpg' %}" 
+                                alt="Profile" 
+                                class="h-8 w-8 rounded-full border border-gray-600">
+                            <span class="text-white font-semibold">{{ user.username }}</span>
+                            <svg class="h-4 w-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+                            </svg>
+                        </button>
+
+                        <!-- Dropdown Menu -->
+                        <div id="userDropdown" class="absolute right-0 mt-2 w-48 bg-gray-800 rounded-md shadow-lg hidden overflow-hidden">
+                            <a href="{% url 'profile_page' %}" class="block px-4 py-3 text-gray-300 hover:bg-gray-700 hover:text-white">
+                                Profile
+                            </a>
+                            <a href="{% url 'logout_page' %}" class="block px-4 py-3 text-gray-300 hover:bg-gray-700 hover:text-white">
+                                Logout
+                            </a>
+                        </div>
+                    </div>
+                    {% else %}
+                    <!-- Auth Buttons -->
+                    <div class="flex space-x-3 ml-6">
+                        <a href="{% url 'login_page' %}" 
+                        class="px-4 py-2 bg-pink-600 hover:bg-pink-700 rounded-lg shadow font-medium">
+                        Login
+                        </a>
+                        <a href="{% url 'register_page' %}" 
+                        class="px-4 py-2 bg-white text-gray-900 hover:bg-gray-200 rounded-lg shadow font-medium">
+                        Register
+                        </a>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- MAIN CONTENT -->
+    <main class="flex-grow max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 relative z-10 w-full">
+        
+        <!-- Page Header -->
+        <div class="text-center mb-12 fade-up">
+            <h1 class="text-5xl font-extrabold mb-4 glow-text">
+                Leaderboards
+            </h1>
+            <p class="text-lg text-gray-300 max-w-2xl mx-auto">
+                Compete with the best hackers and climb to the top!
+            </p>
+        </div>
+
+        <!-- Filter Tabs -->
+        <div class="flex justify-center mb-8 fade-up" style="animation-delay:0.2s;">
+            <div class="bg-gray-800/60 backdrop-blur rounded-lg p-1 inline-flex space-x-2">
+                <button class="tab-btn active px-6 py-2 rounded-md font-semibold transition" data-tab="all">
+                    All Time
+                </button>
+                <button class="tab-btn px-6 py-2 rounded-md font-semibold transition" data-tab="monthly">
+                    This Month
+                </button>
+                <button class="tab-btn px-6 py-2 rounded-md font-semibold transition" data-tab="weekly">
+                    This Week
+                </button>
+            </div>
+        </div>
+
+        <!-- Top 3 Podium -->
+        <div class="grid md:grid-cols-3 gap-6 mb-12 fade-up" style="animation-delay:0.4s;">
+            
+            <!-- 2nd Place -->
+            <div class="order-2 md:order-1 bg-gray-800/80 backdrop-blur rounded-xl p-6 border-2 border-gray-600 hover:border-gray-500 transition transform hover:scale-105">
+                <div class="flex flex-col items-center">
+                    <div class="rank-badge w-16 h-16 bg-gradient-to-br from-gray-400 to-gray-500 rounded-full flex items-center justify-center text-2xl font-bold mb-4 shadow-lg">
+                        2
+                    </div>
+                    <img src="{% static 'accounts/images/empty_profile.jpg' %}" alt="User" class="w-20 h-20 rounded-full border-4 border-gray-400 mb-3 object-cover">
+                    <h3 class="text-xl font-bold silver-gradient">Manolito Gemota</h3>
+                    <p class="text-gray-400 text-sm mb-4">2,450 points</p>
+                    <div class="flex items-center space-x-2 text-sm text-gray-400">
+                        <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                            <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/>
+                        </svg>
+                        <span>45 challenges</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 1st Place -->
+            <div class="order-1 md:order-2 bg-gradient-to-br from-yellow-900/50 to-gray-800/80 backdrop-blur rounded-xl p-6 border-2 border-yellow-500 shadow-2xl transform scale-105 hover:scale-110 transition">
+                <div class="flex flex-col items-center">
+                    <div class="rank-badge w-20 h-20 bg-gradient-to-br from-yellow-400 to-yellow-600 rounded-full flex items-center justify-center text-3xl font-bold mb-4 shadow-2xl">
+                        👑
+                    </div>
+                    <img src="{% static 'accounts/images/empty_profile.jpg' %}" alt="User" class="w-24 h-24 rounded-full border-4 border-yellow-400 mb-3 shadow-lg object-cover">
+                    <h3 class="text-2xl font-bold gold-gradient">JeremiahTheGoat</h3>
+                    <p class="text-yellow-300 text-sm mb-4">3,250 points</p>
+                    <div class="flex items-center space-x-2 text-sm text-yellow-200">
+                        <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                            <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/>
+                        </svg>
+                        <span>68 challenges</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 3rd Place -->
+            <div class="order-3 bg-gray-800/80 backdrop-blur rounded-xl p-6 border-2 border-gray-600 hover:border-gray-500 transition transform hover:scale-105">
+                <div class="flex flex-col items-center">
+                    <div class="rank-badge w-16 h-16 bg-gradient-to-br from-orange-700 to-orange-900 rounded-full flex items-center justify-center text-2xl font-bold mb-4 shadow-lg">
+                        3
+                    </div>
+                    <img src="{% static 'accounts/images/empty_profile.jpg' %}" alt="User" class="w-20 h-20 rounded-full border-4 border-orange-700 mb-3 object-cover">
+                    <h3 class="text-xl font-bold bronze-gradient">Freddie Mercury</h3>
+                    <p class="text-gray-400 text-sm mb-4">2,100 points</p>
+                    <div class="flex items-center space-x-2 text-sm text-gray-400">
+                        <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                            <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/>
+                        </svg>
+                        <span>38 challenges</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Rest of Leaderboard -->
+        <div class="bg-gray-800/80 backdrop-blur rounded-xl overflow-hidden fade-up" style="animation-delay:0.6s;">
+            <div class="overflow-x-auto">
+                <table class="w-full">
+                    <thead class="bg-gray-900/50">
+                        <tr>
+                            <th class="px-6 py-4 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider">Rank</th>
+                            <th class="px-6 py-4 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider">User</th>
+                            <th class="px-6 py-4 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider">Points</th>
+                            <th class="px-6 py-4 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider">Challenges</th>
+                            <th class="px-6 py-4 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider">Streak</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-gray-700">
+                        <tr class="hover:bg-gray-700/50 transition">
+                            <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-300">4</td>
+                            <td class="px-6 py-4 whitespace-nowrap">
+                                <div class="flex items-center space-x-3">
+                                    <img src="{% static 'accounts/images/empty_profile.jpg' %}" alt="User" class="w-10 h-10 rounded-full border-2 border-gray-600 object-cover">
+                                    <span class="font-semibold text-white">CyberNinja</span>
+                                </div>
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-pink-400 font-semibold">1,850</td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-300">32</td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-orange-400 font-semibold">🔥 12 days</td>
+                        </tr>
+                        <tr class="hover:bg-gray-700/50 transition">
+                            <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-300">5</td>
+                            <td class="px-6 py-4 whitespace-nowrap">
+                                <div class="flex items-center space-x-3">
+                                    <img src="{% static 'accounts/images/empty_profile.jpg' %}" alt="User" class="w-10 h-10 rounded-full border-2 border-gray-600 object-cover">
+                                    <span class="font-semibold text-white">HackMaster</span>
+                                </div>
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-pink-400 font-semibold">1,720</td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-300">29</td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-orange-400 font-semibold">🔥 8 days</td>
+                        </tr>
+                        <tr class="hover:bg-gray-700/50 transition">
+                            <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-300">6</td>
+                            <td class="px-6 py-4 whitespace-nowrap">
+                                <div class="flex items-center space-x-3">
+                                    <img src="{% static 'accounts/images/empty_profile.jpg' %}" alt="User" class="w-10 h-10 rounded-full border-2 border-gray-600 object-cover">
+                                    <span class="font-semibold text-white">CodeBreaker</span>
+                                </div>
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-pink-400 font-semibold">1,580</td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-300">26</td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-orange-400 font-semibold">🔥 5 days</td>
+                        </tr>
+                        <tr class="hover:bg-gray-700/50 transition">
+                            <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-300">7</td>
+                            <td class="px-6 py-4 whitespace-nowrap">
+                                <div class="flex items-center space-x-3">
+                                    <img src="{% static 'accounts/images/empty_profile.jpg' %}" alt="User" class="w-10 h-10 rounded-full border-2 border-gray-600 object-cover">
+                                    <span class="font-semibold text-white">SecurityPro</span>
+                                </div>
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-pink-400 font-semibold">1,420</td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-300">24</td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-400">2 days</td>
+                        </tr>
+                        <tr class="hover:bg-gray-700/50 transition">
+                            <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-300">8</td>
+                            <td class="px-6 py-4 whitespace-nowrap">
+                                <div class="flex items-center space-x-3">
+                                    <img src="{% static 'accounts/images/empty_profile.jpg' %}" alt="User" class="w-10 h-10 rounded-full border-2 border-gray-600 object-cover">
+                                    <span class="font-semibold text-white">EliteHacker</span>
+                                </div>
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-pink-400 font-semibold">1,290</td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-300">21</td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-orange-400 font-semibold">🔥 15 days</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Your Rank Card (if logged in) -->
+        {% if user.is_authenticated %}
+        <div class="mt-8 bg-gradient-to-r from-pink-900/30 to-purple-900/30 backdrop-blur rounded-xl p-6 border-2 border-pink-500/50 fade-up" style="animation-delay:0.8s;">
+            <div class="flex items-center justify-between">
+                <div class="flex items-center space-x-4">
+                    <div class="text-3xl font-bold text-pink-400">#42</div>
+                    <div class="flex items-center space-x-3">
+                        <img src="{% static 'accounts/images/empty_profile.jpg' %}" alt="You" class="w-12 h-12 rounded-full border-2 border-pink-400 object-cover">
+                        <div>
+                            <p class="font-semibold text-white">{{ user.username }} <span class="text-pink-400">(You)</span></p>
+                            <p class="text-sm text-gray-400">Keep pushing to climb higher!</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="text-right">
+                    <p class="text-2xl font-bold text-pink-400">850 pts</p>
+                    <p class="text-sm text-gray-400">15 challenges • 🔥 3 days</p>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+
+    </main>
+
+    <!-- FOOTER -->
+    <footer class="bg-gray-800/80 backdrop-blur border-t border-gray-700 relative z-10 mt-16">
+        <div class="max-w-7xl mx-auto px-4 py-6 flex flex-col md:flex-row justify-between items-center text-gray-400 text-sm">
+            <p>&copy; 2025 CTF Academy. All rights reserved.</p>
+            <div class="flex space-x-6 mt-4 md:mt-0">
+                <a href="#" class="hover:text-pink-400">Privacy Policy</a>
+                <a href="#" class="hover:text-pink-400">Terms of Service</a>
+                <a href="#" class="hover:text-pink-400">Contact</a>
+            </div>
+        </div>
+    </footer>
+
+    <!-- Scripts -->
+    <script>
+        // Dropdown functionality
+        const btn = document.getElementById('userMenuButton');
+        const dropdown = document.getElementById('userDropdown');
+        
+        if (btn && dropdown) {
+            btn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                dropdown.classList.toggle('hidden');
+            });
+
+            document.addEventListener('click', (e) => {
+                if (!btn.contains(e.target) && !dropdown.contains(e.target)) {
+                    dropdown.classList.add('hidden');
+                }
+            });
+        }
+
+        // Tab functionality
+        const tabBtns = document.querySelectorAll('.tab-btn');
+        tabBtns.forEach(btn => {
+            btn.addEventListener('click', () => {
+                tabBtns.forEach(b => {
+                    b.classList.remove('active', 'bg-pink-600', 'text-white');
+                    b.classList.add('text-gray-400');
+                });
+                btn.classList.add('active', 'bg-pink-600', 'text-white');
+                btn.classList.remove('text-gray-400');
+                
+                // Here you would typically fetch data for the selected time period
+                console.log('Selected tab:', btn.dataset.tab);
+            });
+        });
+
+        // Set initial active state
+        document.querySelector('.tab-btn.active').classList.add('bg-pink-600', 'text-white');
+        document.querySelectorAll('.tab-btn:not(.active)').forEach(btn => {
+            btn.classList.add('text-gray-400');
+        });
+    </script>
+
+</body>
+</html>

@@ -11,7 +11,8 @@ from .views import (
     profile_page,
     # --- ADD THIS NEW VIEW ---
     MyTokenObtainPairView,
-    challenges_page  # <-- ADD THIS
+    challenges_page, # <-- ADD THIS,
+    leaderboards_page
 )
 # --- ADD THESE IMPORTS ---
 from rest_framework_simplejwt.views import (
@@ -35,4 +36,5 @@ urlpatterns = [
 
     # --- ADD THIS NEW PAGE ---
     path("challenges/", challenges_page, name="challenges_page"),
+    path("leaderboards/", leaderboards_page, name="leaderboards_page"),
 ]

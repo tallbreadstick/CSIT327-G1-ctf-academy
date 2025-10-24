@@ -230,3 +230,7 @@ def profile_page(request):
 def challenges_page(request):
     return render(request, "accounts/challenges.html")
 # ---------------------------------------------
+
+@login_required
+def leaderboards_page(request):
+    return render(request, "accounts/leaderboards.html")
