@@ -115,14 +115,14 @@
                     <div class="relative ml-auto z-50">
                         <button id="userMenuButton" type="button" class="flex items-center space-x-3 focus:outline-none">
                             {% if user.profile.get_base64_image %}
-                            <img src="data:image/jpeg;base64,{{ user.profile.get_base64_image }}" 
-                                alt="Profile" 
-                                class="h-8 w-8 rounded-full border border-gray-600 object-cover">
-                            {% else %}
-                            <img src="{% static 'accounts/images/empty_profile.jpg' %}" 
-                                alt="Profile" 
-                                class="h-8 w-8 rounded-full border border-gray-600 object-cover">
-                            {% endif %}
+                                <img src="data:image/jpeg;base64,{{ user.profile.get_base64_image }}" 
+                                    alt="Profile" 
+                                    class="h-8 w-8 rounded-full border border-gray-600 object-cover">
+                                {% else %}
+                                <img src="{% static 'accounts/images/empty_profile.jpg' %}" 
+                                    alt="Profile" 
+                                    class="h-8 w-8 rounded-full border border-gray-600 object-cover">
+                                {% endif %}
                             <span class="text-white font-semibold">{{ user.username }}</span>
                             <svg class="h-4 w-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
@@ -188,77 +188,59 @@
         <!-- Top 3 Podium -->
         <div class="grid md:grid-cols-3 gap-6 mb-12 fade-up" style="animation-delay:0.4s;">
             
-            {% if top3|length >= 2 %}
             <!-- 2nd Place -->
             <div class="order-2 md:order-1 bg-gray-800/80 backdrop-blur rounded-xl p-6 border-2 border-gray-600 hover:border-gray-500 transition transform hover:scale-105">
                 <div class="flex flex-col items-center">
                     <div class="rank-badge w-16 h-16 bg-gradient-to-br from-gray-400 to-gray-500 rounded-full flex items-center justify-center text-2xl font-bold mb-4 shadow-lg">
                         2
                     </div>
-                    {% if top3.1.image_uri %}
-                    <img src="{{ top3.1.image_uri }}" alt="User" class="w-20 h-20 rounded-full border-4 border-gray-400 mb-3 object-cover">
-                    {% else %}
                     <img src="{% static 'accounts/images/empty_profile.jpg' %}" alt="User" class="w-20 h-20 rounded-full border-4 border-gray-400 mb-3 object-cover">
-                    {% endif %}
-                    <h3 class="text-xl font-bold silver-gradient">{{ top3.1.user.username }}</h3>
-                    <p class="text-gray-400 text-sm mb-4">{{ top3.1.points }} points</p>
+                    <h3 class="text-xl font-bold silver-gradient">Manolito Gemota</h3>
+                    <p class="text-gray-400 text-sm mb-4">2,450 points</p>
                     <div class="flex items-center space-x-2 text-sm text-gray-400">
                         <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
                             <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/>
                         </svg>
-                        <span>{{ top3.1.challenges }} challenges</span>
+                        <span>45 challenges</span>
                     </div>
                 </div>
             </div>
-            {% endif %}
 
-            {% if top3|length >= 1 %}
             <!-- 1st Place -->
             <div class="order-1 md:order-2 bg-gradient-to-br from-yellow-900/50 to-gray-800/80 backdrop-blur rounded-xl p-6 border-2 border-yellow-500 shadow-2xl transform scale-105 hover:scale-110 transition">
                 <div class="flex flex-col items-center">
                     <div class="rank-badge w-20 h-20 bg-gradient-to-br from-yellow-400 to-yellow-600 rounded-full flex items-center justify-center text-3xl font-bold mb-4 shadow-2xl">
                         👑
                     </div>
-                    {% if top3.0.image_uri %}
-                    <img src="{{ top3.0.image_uri }}" alt="User" class="w-24 h-24 rounded-full border-4 border-yellow-400 mb-3 shadow-lg object-cover">
-                    {% else %}
                     <img src="{% static 'accounts/images/empty_profile.jpg' %}" alt="User" class="w-24 h-24 rounded-full border-4 border-yellow-400 mb-3 shadow-lg object-cover">
-                    {% endif %}
-                    <h3 class="text-2xl font-bold gold-gradient">{{ top3.0.user.username }}</h3>
-                    <p class="text-yellow-300 text-sm mb-4">{{ top3.0.points }} points</p>
+                    <h3 class="text-2xl font-bold gold-gradient">JeremiahTheGoat</h3>
+                    <p class="text-yellow-300 text-sm mb-4">3,250 points</p>
                     <div class="flex items-center space-x-2 text-sm text-yellow-200">
                         <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
                             <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/>
                         </svg>
-                        <span>{{ top3.0.challenges }} challenges</span>
+                        <span>68 challenges</span>
                     </div>
                 </div>
             </div>
-            {% endif %}
 
-            {% if top3|length >= 3 %}
             <!-- 3rd Place -->
             <div class="order-3 bg-gray-800/80 backdrop-blur rounded-xl p-6 border-2 border-gray-600 hover:border-gray-500 transition transform hover:scale-105">
                 <div class="flex flex-col items-center">
                     <div class="rank-badge w-16 h-16 bg-gradient-to-br from-orange-700 to-orange-900 rounded-full flex items-center justify-center text-2xl font-bold mb-4 shadow-lg">
                         3
                     </div>
-                    {% if top3.2.image_uri %}
-                    <img src="{{ top3.2.image_uri }}" alt="User" class="w-20 h-20 rounded-full border-4 border-orange-700 mb-3 object-cover">
-                    {% else %}
                     <img src="{% static 'accounts/images/empty_profile.jpg' %}" alt="User" class="w-20 h-20 rounded-full border-4 border-orange-700 mb-3 object-cover">
-                    {% endif %}
-                    <h3 class="text-xl font-bold bronze-gradient">{{ top3.2.user.username }}</h3>
-                    <p class="text-gray-400 text-sm mb-4">{{ top3.2.points }} points</p>
+                    <h3 class="text-xl font-bold bronze-gradient">Freddie Mercury</h3>
+                    <p class="text-gray-400 text-sm mb-4">2,100 points</p>
                     <div class="flex items-center space-x-2 text-sm text-gray-400">
                         <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
                             <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/>
                         </svg>
-                        <span>{{ top3.2.challenges }} challenges</span>
+                        <span>38 challenges</span>
                     </div>
                 </div>
             </div>
-            {% endif %}
         </div>
 
         <!-- Rest of Leaderboard -->
@@ -275,49 +257,87 @@
                         </tr>
                     </thead>
                     <tbody class="divide-y divide-gray-700">
-                        {% for entry in rest %}
                         <tr class="hover:bg-gray-700/50 transition">
-                            <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-300">{{ entry.rank }}</td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-300">4</td>
                             <td class="px-6 py-4 whitespace-nowrap">
                                 <div class="flex items-center space-x-3">
-                                    {% if entry.image_uri %}
-                                    <img src="{{ entry.image_uri }}" alt="User" class="w-10 h-10 rounded-full border-2 border-gray-600 object-cover">
-                                    {% else %}
                                     <img src="{% static 'accounts/images/empty_profile.jpg' %}" alt="User" class="w-10 h-10 rounded-full border-2 border-gray-600 object-cover">
-                                    {% endif %}
-                                    <span class="font-semibold text-white">{{ entry.user.username }}</span>
+                                    <span class="font-semibold text-white">CyberNinja</span>
                                 </div>
                             </td>
-                            <td class="px-6 py-4 whitespace-nowrap text-sm text-pink-400 font-semibold">{{ entry.points }}</td>
-                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-300">{{ entry.challenges }}</td>
-                            <td class="px-6 py-4 whitespace-nowrap text-sm {% if entry.streak > 5 %}text-orange-400 font-semibold{% else %}text-gray-400{% endif %}">
-                                {% if entry.streak > 5 %}🔥 {{ entry.streak }} days{% else %}{{ entry.streak }} days{% endif %}
-                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-pink-400 font-semibold">1,850</td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-300">32</td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-orange-400 font-semibold">🔥 12 days</td>
                         </tr>
-                        {% empty %}
-                        <tr>
-                            <td colspan="5" class="px-6 py-8 text-center text-gray-400">
-                                No other users on the leaderboard yet. Be the first to complete challenges!
+                        <tr class="hover:bg-gray-700/50 transition">
+                            <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-300">5</td>
+                            <td class="px-6 py-4 whitespace-nowrap">
+                                <div class="flex items-center space-x-3">
+                                    <img src="{% static 'accounts/images/empty_profile.jpg' %}" alt="User" class="w-10 h-10 rounded-full border-2 border-gray-600 object-cover">
+                                    <span class="font-semibold text-white">HackMaster</span>
+                                </div>
                             </td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-pink-400 font-semibold">1,720</td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-300">29</td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-orange-400 font-semibold">🔥 8 days</td>
                         </tr>
-                        {% endfor %}
+                        <tr class="hover:bg-gray-700/50 transition">
+                            <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-300">6</td>
+                            <td class="px-6 py-4 whitespace-nowrap">
+                                <div class="flex items-center space-x-3">
+                                    <img src="{% static 'accounts/images/empty_profile.jpg' %}" alt="User" class="w-10 h-10 rounded-full border-2 border-gray-600 object-cover">
+                                    <span class="font-semibold text-white">CodeBreaker</span>
+                                </div>
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-pink-400 font-semibold">1,580</td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-300">26</td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-orange-400 font-semibold">🔥 5 days</td>
+                        </tr>
+                        <tr class="hover:bg-gray-700/50 transition">
+                            <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-300">7</td>
+                            <td class="px-6 py-4 whitespace-nowrap">
+                                <div class="flex items-center space-x-3">
+                                    <img src="{% static 'accounts/images/empty_profile.jpg' %}" alt="User" class="w-10 h-10 rounded-full border-2 border-gray-600 object-cover">
+                                    <span class="font-semibold text-white">SecurityPro</span>
+                                </div>
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-pink-400 font-semibold">1,420</td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-300">24</td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-400">2 days</td>
+                        </tr>
+                        <tr class="hover:bg-gray-700/50 transition">
+                            <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-300">8</td>
+                            <td class="px-6 py-4 whitespace-nowrap">
+                                <div class="flex items-center space-x-3">
+                                    <img src="{% static 'accounts/images/empty_profile.jpg' %}" alt="User" class="w-10 h-10 rounded-full border-2 border-gray-600 object-cover">
+                                    <span class="font-semibold text-white">EliteHacker</span>
+                                </div>
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-pink-400 font-semibold">1,290</td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-300">21</td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-orange-400 font-semibold">🔥 15 days</td>
+                        </tr>
                     </tbody>
                 </table>
             </div>
         </div>
 
         <!-- Your Rank Card (if logged in) -->
-        {% if user.is_authenticated and user_rank_data %}
+        {% if user.is_authenticated %}
         <div class="mt-8 bg-gradient-to-r from-pink-900/30 to-purple-900/30 backdrop-blur rounded-xl p-6 border-2 border-pink-500/50 fade-up" style="animation-delay:0.8s;">
             <div class="flex items-center justify-between">
                 <div class="flex items-center space-x-4">
-                    <div class="text-3xl font-bold text-pink-400">#{{ user_rank_data.rank }}</div>
+                    <div class="text-3xl font-bold text-pink-400">#42</div>
                     <div class="flex items-center space-x-3">
-                        {% if user_rank_data.image_uri %}
-                        <img src="{{ user_rank_data.image_uri }}" alt="You" class="w-12 h-12 rounded-full border-2 border-pink-400 object-cover">
-                        {% else %}
-                        <img src="{% static 'accounts/images/empty_profile.jpg' %}" alt="You" class="w-12 h-12 rounded-full border-2 border-pink-400 object-cover">
-                        {% endif %}
+                        {% if user.profile.get_base64_image %}
+                            <img src="data:image/jpeg;base64,{{ user.profile.get_base64_image }}" 
+                                alt="Profile" 
+                                class="h-8 w-8 rounded-full border border-gray-600 object-cover">
+                            {% else %}
+                            <img src="{% static 'accounts/images/empty_profile.jpg' %}" 
+                                alt="Profile" 
+                                class="h-8 w-8 rounded-full border border-gray-600 object-cover">
+                            {% endif %}
                         <div>
                             <p class="font-semibold text-white">{{ user.username }} <span class="text-pink-400">(You)</span></p>
                             <p class="text-sm text-gray-400">Keep pushing to climb higher!</p>
@@ -325,13 +345,12 @@
                     </div>
                 </div>
                 <div class="text-right">
-                    <p class="text-2xl font-bold text-pink-400">{{ user_rank_data.points }} pts</p>
-                    <p class="text-sm text-gray-400">{{ user_rank_data.challenges }} challenges • {% if user_rank_data.streak > 0 %}🔥 {{ user_rank_data.streak }} days{% else %}0 days{% endif %}</p>
+                    <p class="text-2xl font-bold text-pink-400">850 pts</p>
+                    <p class="text-sm text-gray-400">15 challenges • 🔥 3 days</p>
                 </div>
             </div>
         </div>
-        {% endif %}>
-
+        {% endif %}
 
     </main>
 
