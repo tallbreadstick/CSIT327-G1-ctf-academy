@@ -57,9 +57,15 @@
                     <!-- User Profile Dropdown -->
                     <div class="relative ml-auto z-50">
                         <button id="userMenuButton" type="button" class="flex items-center space-x-3 focus:outline-none">
-                            <img src="{% static 'accounts/images/empty_profile.jpg' %}" 
-                                 alt="Profile" 
-                                 class="h-8 w-8 rounded-full border border-gray-600">
+                            {% if user.profile.get_base64_image %}
+                                <img src="data:image/jpeg;base64,{{ user.profile.get_base64_image }}" 
+                                    alt="Profile" 
+                                    class="h-8 w-8 rounded-full border border-gray-600 object-cover">
+                                {% else %}
+                                <img src="{% static 'accounts/images/empty_profile.jpg' %}" 
+                                    alt="Profile" 
+                                    class="h-8 w-8 rounded-full border border-gray-600 object-cover">
+                                {% endif %}
                             <span class="text-white font-semibold">{{ user.username }}</span>
                             <svg class="h-4 w-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
