@@ -141,6 +141,7 @@ def profile_page(request):
         current_password = request.POST.get("current_password")
         new_password = request.POST.get("new_password")
         confirm_password = request.POST.get("confirm_password")
+        profile_picture = request.FILES.get("profile_picture")  # Added this para sa profile picture
 
         changes_made = False
 
