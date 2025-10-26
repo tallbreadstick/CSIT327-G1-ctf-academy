@@ -47,73 +47,9 @@
 </head>
 <body class="bg-gray-900 text-white flex flex-col min-h-screen">
 
-    <!-- NAVBAR -->
-    <nav class="bg-gray-800/80 backdrop-blur border-b border-gray-700 z-10">
-        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div class="flex items-center justify-between h-16">
-                <div class="flex-shrink-0 flex items-center space-x-2">
-                    <img src="{% static 'accounts/images/logo.png' %}" alt="Logo" class="h-8 w-8">
-                    <span class="text-xl font-bold">CTF Academy</span>
-                </div>
-                <div class="hidden md:flex space-x-8 items-center">
-                    <a href="/" class="text-white hover:text-pink-400">Home</a>
-                    <a href="/about" class="text-white hover:text-pink-400">About</a>
-                    <a href="/challenges" class="text-white hover:text-pink-400">Challenges</a>
-                    <a href="/leaderboards" class="text-white hover:text-pink-400">Leaderboards</a>
-                    {% if user.is_authenticated %}
-                    <!-- User Profile Dropdown -->
-                    <div class="relative ml-auto">
-                        <button id="userMenuButton" class="flex items-center space-x-3 focus:outline-none">
-                            <img src="{% static 'accounts/images/empty_profile.jpg' %}" 
-                                alt="Profile" 
-                                class="h-8 w-8 rounded-full border border-gray-600">
-                            <span class="text-white font-semibold">{{ user.username }}</span>
-                            <svg class="h-4 w-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
-                            </svg>
-                        </button>
-
-                        <!-- Dropdown -->
-                        <div id="userDropdown" class="hidden absolute right-0 mt-2 w-48 bg-gray-800 rounded-lg shadow-lg py-2 z-20">
-                            <a href="{% url 'logout_page' %}" 
-                            class="block px-4 py-2 text-gray-300 hover:bg-gray-700 hover:text-white transition">
-                            Logout
-                            </a>
-                        </div>
-                    </div>
-
-                    <script>
-                        const btn = document.getElementById('userMenuButton');
-                        const dropdown = document.getElementById('userDropdown');
-                        btn.addEventListener('click', () => {
-                            dropdown.classList.toggle('hidden');
-                        });
-
-                        // Optional: close dropdown when clicking outside
-                        document.addEventListener('click', (e) => {
-                            if (!btn.contains(e.target) && !dropdown.contains(e.target)) {
-                                dropdown.classList.add('hidden');
-                            }
-                        });
-                    </script>
-                    {% else %}
-                    <!-- Auth Buttons -->
-                    <div class="flex space-x-3 ml-6">
-                        <a href="{% url 'login_page' %}" 
-                        class="px-4 py-2 bg-pink-600 hover:bg-pink-700 rounded-lg shadow font-medium">
-                        Login
-                        </a>
-                        <a href="{% url 'register_page' %}" 
-                        class="px-4 py-2 bg-white text-gray-900 hover:bg-gray-200 rounded-lg shadow font-medium">
-                        Register
-                        </a>
-                    </div>
-                    {% endif %}
-                </div>
-            </div>
-        </div>
-    </nav>
-
+    <!-- NAVBAR (Reusable Component) -->
+    <c-navbar></c-navbar>
+    
     <!-- MAIN LOGIN FORM -->
     <main class="flex-grow flex flex-col items-center justify-center px-6 py-20">
         <div class="w-2xl bg-gray-800/70 backdrop-blur-lg border border-gray-700 rounded-2xl form-pads shadow-xl fade-up {% if messages %}shake{% endif %}">
