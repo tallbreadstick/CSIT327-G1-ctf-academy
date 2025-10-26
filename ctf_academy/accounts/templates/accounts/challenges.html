@@ -31,74 +31,8 @@
 </head>
 <body class="min-h-screen bg-[var(--color-bg-primary)]">
 
-    <!-- NAVBAR - Corrected and based on your home.html example -->
-    <nav class="bg-gray-800/80 backdrop-blur border-b border-gray-700 relative z-20">
-        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div class="flex items-center justify-between h-16">
-                <!-- Logo -->
-                <a href="{% url 'home' %}" class="flex-shrink-0 flex items-center space-x-2 no-underline text-white">
-                    <img src="{% static 'accounts/images/logo.png' %}" alt="Logo" class="h-8 w-8">
-                    <span class="text-xl font-bold">CTF Academy</span>
-                </a>
-
-                <!-- Menu -->
-                <div class="hidden md:flex space-x-8 items-center">
-                    {% if user.is_superuser %}
-                    <a href="{% url 'admin_dashboard_page' %}" class="text-white hover:text-pink-400">Home</a>
-                    {% else %}
-                    <a href="{% url 'home' %}" class="text-white hover:text-pink-400">Home</a>
-                    {% endif %}
-                    
-                    <a href="{% url 'about_page' %}" class="text-white hover:text-pink-400">About</a>
-                    <a href="{% url 'challenges_page' %}" class="text-pink-400 font-semibold">Challenges</a>
-                    <a href="/leaderboards" class="text-white hover:text-pink-400">Leaderboards</a>
-
-                    {% if user.is_authenticated %}
-                    <!-- User Profile Dropdown -->
-                    <div class="relative ml-auto z-50">
-                        <button id="userMenuButton" type="button" class="flex items-center space-x-3 focus:outline-none">
-                            {% if user.profile.get_base64_image %}
-                                <img src="data:image/jpeg;base64,{{ user.profile.get_base64_image }}" 
-                                    alt="Profile" 
-                                    class="h-8 w-8 rounded-full border border-gray-600 object-cover">
-                                {% else %}
-                                <img src="{% static 'accounts/images/empty_profile.jpg' %}" 
-                                    alt="Profile" 
-                                    class="h-8 w-8 rounded-full border border-gray-600 object-cover">
-                                {% endif %}
-                            <span class="text-white font-semibold">{{ user.username }}</span>
-                            <svg class="h-4 w-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
-                            </svg>
-                        </button>
-
-                        <!-- Dropdown Menu -->
-                        <div id="userDropdown" class="absolute right-0 mt-2 w-48 bg-gray-800 rounded-md shadow-lg hidden overflow-hidden">
-                            <a href="{% url 'profile_page' %}" class="block px-4 py-3 text-gray-300 hover:bg-gray-700 hover:text-white">
-                                Profile
-                            </a>
-                            <a href="{% url 'logout_page' %}" class="block px-4 py-3 text-gray-300 hover:bg-gray-700 hover:text-white">
-                                Logout
-                            </a>
-                        </div>
-                    </div>
-                    {% else %}
-                    <!-- Auth Buttons -->
-                    <div class="flex space-x-3 ml-6">
-                        <a href="{% url 'login_page' %}" 
-                           class="px-4 py-2 bg-pink-600 hover:bg-pink-700 rounded-lg shadow font-medium">
-                           Login
-                        </a>
-                        <a href="{% url 'register_page' %}" 
-                           class="px-4 py-2 bg-white text-gray-900 hover:bg-gray-200 rounded-lg shadow font-medium">
-                           Register
-                        </a>
-                    </div>
-                    {% endif %}
-                </div>
-            </div>
-        </div>
-    </nav>
+    <!-- NAVBAR (Reusable Component) -->
+    <c-navbar></c-navbar>
 
     <!-- MAIN CONTENT -->
     <main class="container mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-10">
@@ -272,24 +206,8 @@
         </section>
     </main>
 
-    <!-- Dropdown Script -->
-    <script>
-        const btn = document.getElementById('userMenuButton');
-        const dropdown = document.getElementById('userDropdown');
-        
-        if (btn && dropdown) {
-            btn.addEventListener('click', (e) => {
-                e.stopPropagation();
-                dropdown.classList.toggle('hidden');
-            });
-
-            document.addEventListener('click', (e) => {
-                if (!dropdown.classList.contains('hidden') && !btn.contains(e.target) && !dropdown.contains(e.target)) {
-                    dropdown.classList.add('hidden');
-                }
-            });
-        }
-    </script>
+    <!-- FOOTER -->
+    <c-footer></c-footer>
 
 </body>
 </html>

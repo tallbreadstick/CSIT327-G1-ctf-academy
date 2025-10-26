@@ -39,25 +39,8 @@
     <div class="absolute inset-0 opacity-10 bg-[radial-gradient(circle_at_center,#ec4899,transparent_70%)] animate-pulse"></div>
     <div class="absolute top-0 left-0 w-full h-full bg-[linear-gradient(45deg,#fff1,transparent_60%)]"></div>
 
-    <!-- NAVBAR -->
-    <nav class="bg-gray-800/80 backdrop-blur border-b border-gray-700 z-10">
-        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div class="flex items-center justify-between h-16">
-                <!-- Logo -->
-                <div class="flex-shrink-0 flex items-center space-x-2">
-                    <img src="{% static 'accounts/images/logo.png' %}" alt="Logo" class="h-8 w-8">
-                    <span class="text-xl font-bold">CTF Academy</span>
-                </div>
-                <!-- Menu -->
-                <div class="hidden md:flex space-x-8">
-                    <a href="/" class="text-white hover:text-pink-400 transition">Home</a>
-                    <a href="/about" class="text-pink-400 font-semibold">About</a>
-                    <a href="/challenges" class="text-white hover:text-pink-400 transition">Challenges</a>
-                    <a href="/leaderboards" class="text-white hover:text-pink-400 transition">Leaderboards</a>
-                </div>
-            </div>
-        </div>
-    </nav>
+    <!-- NAVBAR (Reusable Component) -->
+    <c-navbar></c-navbar>
 
     <!-- MAIN CONTENT -->
     <main class="flex-grow flex flex-col items-center justify-center text-left px-6 py-12 max-w-4xl mx-auto relative z-10">
@@ -96,16 +79,7 @@
     </main>
 
     <!-- FOOTER -->
-    <footer class="bg-gray-800/80 backdrop-blur border-t border-gray-700 relative z-10">
-        <div class="max-w-7xl mx-auto px-4 py-6 flex flex-col md:flex-row justify-between items-center text-gray-400 text-sm">
-            <p>&copy; 2025 CTF Academy. All rights reserved.</p>
-            <div class="flex space-x-6 mt-4 md:mt-0">
-                <a href="#" class="hover:text-pink-400 transition">Privacy Policy</a>
-                <a href="#" class="hover:text-pink-400 transition">Terms of Service</a>
-                <a href="#" class="hover:text-pink-400 transition">Contact</a>
-            </div>
-        </div>
-    </footer>
+    <c-footer></c-footer>
 
 </body>
 </html>
