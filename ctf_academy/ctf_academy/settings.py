@@ -12,6 +12,15 @@ SECRET_KEY = env("SECRET_KEY", default="django-insecure-local-dev-secret")
 DEBUG = env.bool('DEBUG', default=False)
 ALLOWED_HOSTS = env.list('ALLOWED_HOSTS', default=['127.0.0.1', 'localhost', 'ctf-academy.onrender.com'])
 
+# Django requires explicit trusted origins for the CSRF checks when the request
+# comes from a different origin (scheme + host), for example when deployed to
+# Render with HTTPS. Include the scheme (https://) here. You can override this
+# via the CSRF_TRUSTED_ORIGINS env var using comma-separated values.
+CSRF_TRUSTED_ORIGINS = env.list(
+    'CSRF_TRUSTED_ORIGINS',
+    default=['https://ctf-academy.onrender.com']
+)
+
 INSTALLED_APPS = [
     'django.contrib.admin',
     'django.contrib.auth',
