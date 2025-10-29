@@ -30,5 +30,4 @@ if exist requirements.txt (
 )
 
 echo Done.
-pause
 endlocal
