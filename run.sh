@@ -19,5 +19,17 @@ fi
 # Activate the virtual environment
 source "$VENV_DIR/bin/activate"
 
-# Run Django server, forwarding all args
-python ctf_academy/manage.py runserver "$@"
+# Determine port: use $PORT if provided (Render), otherwise default to 8000
+if [ -z "$PORT" ]; then
+    PORT=8000
+fi
+
+# Determine host: 0.0.0.0 if deployed, else localhost
+if [ "$PORT" != "8000" ]; then
+    HOST="0.0.0.0"
+else
+    HOST="127.0.0.1"
+fi
+
+echo "Starting Django development server on $HOST:$PORT ..."
+python ctf_academy/manage.py runserver "$HOST:$PORT"
