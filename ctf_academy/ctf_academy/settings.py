@@ -10,7 +10,7 @@ environ.Env.read_env(BASE_DIR.parent / '.env')
 
 SECRET_KEY = env("SECRET_KEY", default="django-insecure-local-dev-secret")
 DEBUG = env.bool('DEBUG', default=False)
-ALLOWED_HOSTS = env.list('ALLOWED_HOSTS', default=['127.0.0.1', 'localhost'])
+ALLOWED_HOSTS = env.list('ALLOWED_HOSTS', default=['127.0.0.1', 'localhost', 'ctf-academy.onrender.com'])
 
 INSTALLED_APPS = [
     'django.contrib.admin',
