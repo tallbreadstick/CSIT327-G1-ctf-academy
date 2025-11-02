@@ -1,0 +1,92 @@
+[
+  {
+    "model": "accounts.category",
+    "pk": 1,
+    "fields": {
+      "name": "Web Exploitation",
+      "slug": "web-exploitation",
+      "icon_class": "fa-solid fa-globe"
+    }
+  },
+  {
+    "model": "accounts.category",
+    "pk": 2,
+    "fields": {
+      "name": "Networking & Traffic Analysis",
+      "slug": "networking-traffic",
+      "icon_class": "fa-solid fa-network-wired"
+    }
+  },
+  {
+    "model": "accounts.category",
+    "pk": 3,
+    "fields": {
+      "name": "Reconnaissance & Automation",
+      "slug": "reconnaissance-automation",
+      "icon_class": "fa-solid fa-search"
+    }
+  },
+  {
+    "model": "accounts.category",
+    "pk": 4,
+    "fields": {
+      "name": "Authentication & Credential Attacks",
+      "slug": "authentication-credential-attacks",
+      "icon_class": "fa-solid fa-key"
+    }
+  },
+  {
+    "model": "accounts.category",
+    "pk": 5,
+    "fields": {
+      "name": "Pivoting & Lateral Movement",
+      "slug": "pivoting-lateral-movement",
+      "icon_class": "fa-solid fa-route"
+    }
+  },
+  {
+    "model": "accounts.category",
+    "pk": 6,
+    "fields": {
+      "name": "Privilege Escalation & OS Exploits",
+      "slug": "privilege-escalation-os-exploits",
+      "icon_class": "fa-solid fa-user-shield"
+    }
+  },
+  {
+    "model": "accounts.category",
+    "pk": 7,
+    "fields": {
+      "name": "Binary Exploitation & Reverse Engineering",
+      "slug": "binary-reverse",
+      "icon_class": "fa-solid fa-microchip"
+    }
+  },
+  {
+    "model": "accounts.category",
+    "pk": 8,
+    "fields": {
+      "name": "Cryptography & Protocols",
+      "slug": "cryptography-protocols",
+      "icon_class": "fa-solid fa-lock"
+    }
+  },
+  {
+    "model": "accounts.category",
+    "pk": 9,
+    "fields": {
+      "name": "Large-Scale / Multi-Stage",
+      "slug": "large-scale-multi-stage",
+      "icon_class": "fa-solid fa-network-exchange"
+    }
+  },
+  {
+    "model": "accounts.category",
+    "pk": 10,
+    "fields": {
+      "name": "Forensics & Data Recovery",
+      "slug": "forensics-data-recovery",
+      "icon_class": "fa-solid fa-file-search"
+    }
+  }
+]

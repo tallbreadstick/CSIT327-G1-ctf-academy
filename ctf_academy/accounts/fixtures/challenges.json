@@ -1,0 +1,408 @@
+[
+  {
+    "model": "accounts.challenge",
+    "pk": 1,
+    "fields": {
+      "category": 1,
+      "title": "Baby Steps",
+      "slug": "baby-steps",
+      "description": "A single host exposes an unauthenticated endpoint that returns the flag. Connect to the endpoint and retrieve the flag.",
+      "difficulty": "easy",
+      "points": 50,
+      "estimated_time": null,
+      "is_active": true,
+      "entrypoint": "target",
+      "topology": {
+        "nodes": {
+          "target": { "ports": [80], "services": { "http": { "routes": ["/flag"] } } }
+        },
+        "edges": []
+      },
+      "created_at": "2025-11-02T15:03:00+08:00",
+      "updated_at": "2025-11-02T15:03:00+08:00"
+    }
+  },
+  {
+    "model": "accounts.challenge",
+    "pk": 2,
+    "fields": {
+      "category": 2,
+      "title": "Ring Around The Rosie",
+      "slug": "ring-around-the-rosie",
+      "description": "A ring of hosts where each host contains a password-protected endpoint and also reveals the password to the next host. Follow the ring and capture every flag.",
+      "difficulty": "medium",
+      "points": 150,
+      "estimated_time": null,
+      "is_active": true,
+      "entrypoint": "host1",
+      "topology": {
+        "nodes": {
+          "host1": {"ports":[8080],"services":{"web":{"password_protected":true}}},
+          "host2": {"ports":[8080],"services":{"web":{"password_protected":true}}},
+          "host3": {"ports":[8080],"services":{"web":{"password_protected":true}}}
+        },
+        "edges": [["host1","host2"],["host2","host3"],["host3","host1"]]
+      },
+      "created_at": "2025-11-02T15:03:00+08:00",
+      "updated_at": "2025-11-02T15:03:00+08:00"
+    }
+  },
+  {
+    "model": "accounts.challenge",
+    "pk": 3,
+    "fields": {
+      "category": 4,
+      "title": "Binary Search Password",
+      "slug": "binary-search-password",
+      "description": "An endpoint accepts a password guess and responds whether it's lexicographically lower or higher. Use binary search to find the correct password efficiently.",
+      "difficulty": "medium",
+      "points": 140,
+      "estimated_time": null,
+      "is_active": true,
+      "entrypoint": "vault",
+      "topology": {
+        "nodes": {
+          "vault": {"ports":[5000],"services":{"api":{"password_feedback":"lt|gt|eq"}}}
+        },
+        "edges": []
+      },
+      "created_at": "2025-11-02T15:03:00+08:00",
+      "updated_at": "2025-11-02T15:03:00+08:00"
+    }
+  },
+  {
+    "model": "accounts.challenge",
+    "pk": 4,
+    "fields": {
+      "category": 4,
+      "title": "PIN Crack",
+      "slug": "pin-crack",
+      "description": "A 4-digit PIN protects the flag endpoint. Brute-force the PIN (10,000 possibilities) and retrieve the flag.",
+      "difficulty": "easy",
+      "points": 60,
+      "estimated_time": null,
+      "is_active": true,
+      "entrypoint": "door",
+      "topology": {
+        "nodes": {
+          "door": {"ports":[3000],"services":{"web":{"pin_length":4,"rate_limit":false}}}
+        },
+        "edges": []
+      },
+      "created_at": "2025-11-02T15:03:00+08:00",
+      "updated_at": "2025-11-02T15:03:00+08:00"
+    }
+  },
+  {
+    "model": "accounts.challenge",
+    "pk": 5,
+    "fields": {
+      "category": 3,
+      "title": "Needle In Haystack",
+      "slug": "needle-in-haystack",
+      "description": "Many hosts exist and the flag is hidden somewhere. Use scripts and automation to crawl and locate the flag across weakly-protected hosts.",
+      "difficulty": "hard",
+      "points": 300,
+      "estimated_time": null,
+      "is_active": true,
+      "entrypoint": "host-a",
+      "topology": {
+        "nodes": {
+          "host-a": {"ports":[80],"services":{"web":{}}},
+          "host-b": {"ports":[80],"services":{"web":{}}},
+          "host-c": {"ports":[22],"services":{"ssh":{}}},
+          "host-d": {"ports":[8080],"services":{"web":{}}}
+        },
+        "edges": [["host-a","host-b"],["host-b","host-c"],["host-c","host-d"]]
+      },
+      "created_at": "2025-11-02T15:03:00+08:00",
+      "updated_at": "2025-11-02T15:03:00+08:00"
+    }
+  },
+  {
+    "model": "accounts.challenge",
+    "pk": 6,
+    "fields": {
+      "category": 1,
+      "title": "Bobby Tables",
+      "slug": "bobby-tables",
+      "description": "A student info form is vulnerable to SQL injection. Craft an input to drop the `student` table as the challenge requires.",
+      "difficulty": "easy",
+      "points": 70,
+      "estimated_time": null,
+      "is_active": true,
+      "entrypoint": "app",
+      "topology": {
+        "nodes": {
+          "app": {"ports":[80],"services":{"web":{"form":"student_entry","db":"sqlite"}}}
+        },
+        "edges": []
+      },
+      "created_at": "2025-11-02T15:03:00+08:00",
+      "updated_at": "2025-11-02T15:03:00+08:00"
+    }
+  },
+  {
+    "model": "accounts.challenge",
+    "pk": 7,
+    "fields": {
+      "category": 1,
+      "title": "Location On The Flyer",
+      "slug": "location-on-the-flyer",
+      "description": "Developers left secret keys in frontend code. Inspect page source or bundled JS to find keys and use them to access protected functionality.",
+      "difficulty": "easy",
+      "points": 55,
+      "estimated_time": null,
+      "is_active": true,
+      "entrypoint": "webpage",
+      "topology": {
+        "nodes": {
+          "webpage": {"ports":[80],"services":{"web":{"static_files":["index.html","app.js"]}}}
+        },
+        "edges": []
+      },
+      "created_at": "2025-11-02T15:03:00+08:00",
+      "updated_at": "2025-11-02T15:03:00+08:00"
+    }
+  },
+  {
+    "model": "accounts.challenge",
+    "pk": 8,
+    "fields": {
+      "category": 4,
+      "title": "We Will Rock You",
+      "slug": "we-will-rock-you",
+      "description": "A site has leaked password lists. Use leaked credentials to guess the target user's password and capture the flag.",
+      "difficulty": "easy",
+      "points": 65,
+      "estimated_time": null,
+      "is_active": true,
+      "entrypoint": "social",
+      "topology": {
+        "nodes": {
+          "social": {"ports":[80],"services":{"web":{"auth":true,"user_db":"leaked_passwords.json"}}}
+        },
+        "edges": []
+      },
+      "created_at": "2025-11-02T15:03:00+08:00",
+      "updated_at": "2025-11-02T15:03:00+08:00"
+    }
+  },
+  {
+    "model": "accounts.challenge",
+    "pk": 9,
+    "fields": {
+      "category": 5,
+      "title": "Identity Theft",
+      "slug": "identity-theft",
+      "description": "Two hosts: one only accepts connections from the other. Use the weaker host to pivot and access the restricted host to capture the flag.",
+      "difficulty": "medium",
+      "points": 160,
+      "estimated_time": null,
+      "is_active": true,
+      "entrypoint": "bastion",
+      "topology": {
+        "nodes": {
+          "bastion": {"ports":[80],"services":{"web":{}}},
+          "secure": {"ports":[8080],"services":{"web":{"access_control":"allow:bastion"}}}
+        },
+        "edges": [["bastion","secure"]]
+      },
+      "created_at": "2025-11-02T15:03:00+08:00",
+      "updated_at": "2025-11-02T15:03:00+08:00"
+    }
+  },
+  {
+    "model": "accounts.challenge",
+    "pk": 10,
+    "fields": {
+      "category": 9,
+      "title": "Crawl And Conquer",
+      "slug": "crawl-and-conquer",
+      "description": "Many hosts with strict firewall rules; find public weak links and crawl each connected graph to capture all flags.",
+      "difficulty": "hard",
+      "points": 350,
+      "estimated_time": null,
+      "is_active": true,
+      "entrypoint": "a",
+      "topology": {
+        "nodes": {
+          "a": {"ports":[80],"services":{"web":{}}},
+          "b": {"ports":[8080],"services":{"web":{}}},
+          "c": {"ports":[22],"services":{"ssh":{}}},
+          "d": {"ports":[5000],"services":{"api":{}}}
+        },
+        "edges": [["a","b"],["b","c"],["c","d"]]
+      },
+      "created_at": "2025-11-02T15:03:00+08:00",
+      "updated_at": "2025-11-02T15:03:00+08:00"
+    }
+  },
+  {
+    "model": "accounts.challenge",
+    "pk": 11,
+    "fields": {
+      "category": 2,
+      "title": "Man In The Middle I",
+      "slug": "man-in-the-middle-i",
+      "description": "Two hosts communicate over unencrypted HTTP. Use a packet analyzer or proxy to capture the secret transmitted and retrieve the flag.",
+      "difficulty": "medium",
+      "points": 130,
+      "estimated_time": null,
+      "is_active": true,
+      "entrypoint": "client",
+      "topology": {
+        "nodes": {
+          "client": {"ports":[],"services":{}},
+          "server": {"ports":[80],"services":{"web":{"exchanges_http":true}}}
+        },
+        "edges": [["client","server"]]
+      },
+      "created_at": "2025-11-02T15:03:00+08:00",
+      "updated_at": "2025-11-02T15:03:00+08:00"
+    }
+  },
+  {
+    "model": "accounts.challenge",
+    "pk": 12,
+    "fields": {
+      "category": 8,
+      "title": "Man In The Middle II",
+      "slug": "man-in-the-middle-ii",
+      "description": "Hosts exchange encrypted messages where a key is sent before the message. Intercept the key and decrypt the payload to find the secret.",
+      "difficulty": "medium",
+      "points": 150,
+      "estimated_time": null,
+      "is_active": true,
+      "entrypoint": "client",
+      "topology": {
+        "nodes": {
+          "client": {"ports":[],"services":{}},
+          "server": {"ports":[80],"services":{"web":{"key_then_message_protocol":true}}}
+        },
+        "edges": [["client","server"]]
+      },
+      "created_at": "2025-11-02T15:03:00+08:00",
+      "updated_at": "2025-11-02T15:03:00+08:00"
+    }
+  },
+  {
+    "model": "accounts.challenge",
+    "pk": 13,
+    "fields": {
+      "category": 4,
+      "title": "Plaintext Passwords",
+      "slug": "plaintext-passwords",
+      "description": "A host stores passwords in plaintext. Use SQL injection to leak credentials and log in to retrieve the flag.",
+      "difficulty": "easy",
+      "points": 80,
+      "estimated_time": null,
+      "is_active": true,
+      "entrypoint": "app",
+      "topology": {
+        "nodes": {
+          "app": {"ports":[80],"services":{"web":{"auth_db":"plaintext"}}}
+        },
+        "edges": []
+      },
+      "created_at": "2025-11-02T15:03:00+08:00",
+      "updated_at": "2025-11-02T15:03:00+08:00"
+    }
+  },
+  {
+    "model": "accounts.challenge",
+    "pk": 14,
+    "fields": {
+      "category": 2,
+      "title": "Session Hijack",
+      "slug": "session-hijack",
+      "description": "Capture a client's auth token from a vulnerable client on the same network and reuse it to access protected server resources.",
+      "difficulty": "medium",
+      "points": 140,
+      "estimated_time": null,
+      "is_active": true,
+      "entrypoint": "client",
+      "topology": {
+        "nodes": {
+          "client": {"ports":[],"services":{"logged_in":true}},
+          "server": {"ports":[80],"services":{"web":{"auth_token_required":true}}}
+        },
+        "edges": [["client","server"]]
+      },
+      "created_at": "2025-11-02T15:03:00+08:00",
+      "updated_at": "2025-11-02T15:03:00+08:00"
+    }
+  },
+  {
+    "model": "accounts.challenge",
+    "pk": 15,
+    "fields": {
+      "category": 9,
+      "title": "Minotaur's Labyrinth",
+      "slug": "minotaurs-labyrinth",
+      "description": "Large network of keystores and gateways; keys rotate and gateways reassign. Automate discovery and act quickly to reach the final gateway and capture the flag.",
+      "difficulty": "hard",
+      "points": 500,
+      "estimated_time": null,
+      "is_active": true,
+      "entrypoint": "keystore-1",
+      "topology": {
+        "nodes": {
+          "keystore-1": {"ports":[9001],"services":{"keystore":{}}},
+          "gateway-1": {"ports":[8101],"services":{"gateway":{"requires_keys":["keystore-1"]}}},
+          "gateway-final": {"ports":[8200],"services":{"gateway":{"final":true}}}
+        },
+        "edges": [["gateway-1","keystore-1"],["gateway-final","gateway-1"]]
+      },
+      "created_at": "2025-11-02T15:03:00+08:00",
+      "updated_at": "2025-11-02T15:03:00+08:00"
+    }
+  },
+  {
+    "model": "accounts.challenge",
+    "pk": 16,
+    "fields": {
+      "category": 2,
+      "title": "Starry Starry Night",
+      "slug": "starry-starry-night",
+      "description": "Analyze packet traffic to model normal distributions for an anti-cheat system and craft packets that blend in. Once enough cheat packets bypass detection, the flag is captured.",
+      "difficulty": "hard",
+      "points": 520,
+      "estimated_time": null,
+      "is_active": true,
+      "entrypoint": "research",
+      "topology": {
+        "nodes": {
+          "ingestion": {"ports":[4000],"services":{"packet_ingest":{"anti_cheat":true}}},
+          "research": {"ports":[],"services":{}}
+        },
+        "edges": [["research","ingestion"]]
+      },
+      "created_at": "2025-11-02T15:03:00+08:00",
+      "updated_at": "2025-11-02T15:03:00+08:00"
+    }
+  },
+  {
+    "model": "accounts.challenge",
+    "pk": 17,
+    "fields": {
+      "category": 6,
+      "title": "Root Cause",
+      "slug": "root-cause",
+      "description": "A provided exploit escalates privileges to root on a target host. Use it to SSH in as root and seize the flag in /root/flag.txt.",
+      "difficulty": "easy",
+      "points": 90,
+      "estimated_time": null,
+      "is_active": true,
+      "entrypoint": "target",
+      "topology": {
+        "nodes": {
+          "target": {"ports":[22],"services":{"ssh":{"root_login":false,"vuln_exploit_available":true}}}
+        },
+        "edges": []
+      },
+      "created_at": "2025-11-02T15:03:00+08:00",
+      "updated_at": "2025-11-02T15:03:00+08:00"
+    }
+  }
+]

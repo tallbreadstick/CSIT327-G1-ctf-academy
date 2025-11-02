@@ -19,6 +19,10 @@ npm install
 echo Building TailwindCSS assets ...
 npm run build
 
+echo Building Django tailwind
+cd ..\..
+python manage.py tailwind build
+
 echo Tailwind build complete.
 pause
 endlocal

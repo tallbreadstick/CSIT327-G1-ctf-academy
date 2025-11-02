@@ -5,7 +5,7 @@ from django.core.exceptions import ValidationError
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework import status
-from django.shortcuts import render, redirect
+from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required, user_passes_test
 from .models import Challenge, Category, UserProfile
@@ -234,3 +234,13 @@ def challenges_page(request):
 @login_required
 def leaderboards_page(request):
     return render(request, "accounts/leaderboards.html")
+
+@login_required
+def challenge_detail(request, slug):
+    challenge = get_object_or_404(Challenge, slug=slug)
+    categories = Category.objects.all()
+
+    return render(request, "accounts/challenge.html", {
+        "challenge": challenge,
+        "categories": categories,
+    })

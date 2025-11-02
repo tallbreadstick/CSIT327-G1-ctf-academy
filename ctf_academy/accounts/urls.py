@@ -12,6 +12,7 @@ from .views import (
     # --- ADD THIS NEW VIEW ---
     MyTokenObtainPairView,
     challenges_page, # <-- ADD THIS,
+    challenge_detail,
     leaderboards_page
 )
 # --- ADD THESE IMPORTS ---
@@ -37,4 +38,5 @@ urlpatterns = [
     # --- ADD THIS NEW PAGE ---
     path("challenges/", challenges_page, name="challenges_page"),
     path("leaderboards/", leaderboards_page, name="leaderboards_page"),
+    path("challenges/<slug:slug>/", challenge_detail, name="challenge_detail"),
 ]
