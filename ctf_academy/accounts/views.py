@@ -225,11 +225,111 @@ def profile_page(request):
     })
 
 
-# --- THIS IS THE FUNCTION YOU ARE MISSING ---
 @login_required
 def challenges_page(request):
-    return render(request, "accounts/challenges.html")
-# ---------------------------------------------
+    user = request.user
+
+    # --- Basic collections ---
+    categories = Category.objects.all().order_by("name")
+    qs = Challenge.objects.filter(is_active=True).select_related("category")
+
+    # --- Filters from query string ---
+    q = request.GET.get("q", "").strip()
+    category_slug = request.GET.get("category", "")
+    difficulty = request.GET.get("difficulty", "")
+
+    if category_slug:
+        qs = qs.filter(category__slug=category_slug)
+
+    if difficulty:
+        qs = qs.filter(difficulty=difficulty)
+
+    if q:
+        # simple search across title and description
+        qs = qs.filter(Q(title__icontains=q) | Q(description__icontains=q) | Q(category__name__icontains=q))
+
+    qs = qs.order_by("id")
+
+    # --- Stats: totals & points ---
+    total_count = qs.count()
+    points_total = qs.aggregate(total_points=Sum("points"))["total_points"] or 0
+
+    completed_count = 0
+    in_progress_count = 0
+    points_earned = 0
+
+    # Determine completion tracking strategy:
+    # 1) If Challenge has an M2M 'completed_by', use it.
+    # 2) Else try optional ChallengeProgress model (user, challenge, status).
+    # 3) Otherwise show zeros (no tracking implemented).
+    try:
+        # Method 1: M2M completed_by
+        if hasattr(Challenge, "completed_by"):
+            completed_qs = qs.filter(completed_by=user)
+            completed_count = completed_qs.count()
+            points_earned = completed_qs.aggregate(points=Sum("points"))["points"] or 0
+
+            # annotate per-challenge flags
+            challenges = list(qs)
+            completed_ids = set(completed_qs.values_list("id", flat=True))
+            for ch in challenges:
+                ch.is_completed = (ch.id in completed_ids)
+                # tools_count placeholder: if topology contains 'tools' list, count it
+                try:
+                    ch.tools_count = len(ch.topology.get("tools", [])) if ch.topology else 0
+                except Exception:
+                    ch.tools_count = 0
+
+        else:
+            # Method 2: optional ChallengeProgress model
+            from .models import ChallengeProgress  # may not exist
+            progress_qs = ChallengeProgress.objects.filter(user=user, challenge__in=qs)
+
+            completed_count = progress_qs.filter(status="completed").count()
+            in_progress_count = progress_qs.filter(status="in_progress").count()
+            points_earned = progress_qs.filter(status="completed").aggregate(points=Sum("challenge__points"))["points"] or 0
+
+            challenges = list(qs)
+            # map statuses by challenge id
+            prog_map = {p.challenge_id: p.status for p in progress_qs}
+            for ch in challenges:
+                ch.is_completed = prog_map.get(ch.id) == "completed"
+                ch.tools_count = len(ch.topology.get("tools", [])) if ch.topology else 0
+
+    except Exception:
+        # Fallback: no completion tracking available
+        completed_count = 0
+        in_progress_count = 0
+        points_earned = 0
+        challenges = list(qs)
+        for ch in challenges:
+            ch.is_completed = False
+            try:
+                ch.tools_count = len(ch.topology.get("tools", [])) if ch.topology else 0
+            except Exception:
+                ch.tools_count = 0
+
+    stats = {
+        "total": total_count,
+        "points_total": points_total,
+        "completed": completed_count,
+        "in_progress": in_progress_count,
+        "points_earned": points_earned,
+        "categories_count": categories.count(),
+    }
+
+    context = {
+        "categories": categories,
+        "challenges": challenges,
+        "DIFFICULTY_CHOICES": Challenge.Difficulty.choices,
+        "selected_category": category_slug,
+        "selected_difficulty": difficulty,
+        "q": q,
+        "stats": stats,
+    }
+
+    return render(request, "accounts/challenges.html", context)
+
 
 @login_required
 def leaderboards_page(request):

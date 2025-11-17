@@ -6,14 +6,10 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Challenges - CTF Academy</title>
     <link rel="icon" type="image/png" href="{% static 'accounts/images/logo.png' %}">
-    
-    <!-- Font Awesome for Icons -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
-    
     {% tailwind_css %}
 
     <style>
-        /* Custom CSS variables to perfectly match the color scheme from the screenshot. */
         :root {
             --color-bg-primary: #0d1117;
             --color-bg-secondary: #161b22;
@@ -31,10 +27,9 @@
 </head>
 <body class="min-h-screen bg-[var(--color-bg-primary)]">
 
-    <!-- NAVBAR (Reusable Component) -->
+    <!-- NAVBAR -->
     <c-navbar></c-navbar>
 
-    <!-- MAIN CONTENT -->
     <main class="container mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-10">
 
         <!-- STATS BAR -->
@@ -42,28 +37,35 @@
             <div class="bg-[var(--color-bg-secondary)] p-6 flex items-center gap-4">
                 <i class="fas fa-star text-lg text-[var(--color-text-dark)]"></i>
                 <div>
-                    <h4 class="text-lg font-semibold text-white">120<span class="text-[var(--color-text-dark)]"> / 470</span></h4>
+                    <h4 class="text-lg font-semibold text-white">
+                        {{ stats.points_earned }}<span class="text-[var(--color-text-dark)]"> / {{ stats.points_total }}</span>
+                    </h4>
                     <p class="text-sm text-[var(--color-text-dark)]">Total Points</p>
                 </div>
             </div>
+
             <div class="bg-[var(--color-bg-secondary)] p-6 flex items-center gap-4">
                 <i class="fas fa-check-circle text-lg text-[var(--color-text-dark)]"></i>
                 <div>
-                    <h4 class="text-lg font-semibold text-white">1<span class="text-[var(--color-text-dark)]"> / 6</span></h4>
+                    <h4 class="text-lg font-semibold text-white">
+                        {{ stats.completed }}<span class="text-[var(--color-text-dark)]"> / {{ stats.total }}</span>
+                    </h4>
                     <p class="text-sm text-[var(--color-text-dark)]">Completed</p>
                 </div>
             </div>
+
             <div class="bg-[var(--color-bg-secondary)] p-6 flex items-center gap-4">
                 <i class="fas fa-tasks text-lg text-[var(--color-text-dark)]"></i>
                 <div>
-                    <h4 class="text-lg font-semibold text-white">5</h4>
+                    <h4 class="text-lg font-semibold text-white">{{ stats.in_progress }}</h4>
                     <p class="text-sm text-[var(--color-text-dark)]">In Progress</p>
                 </div>
             </div>
+
             <div class="bg-[var(--color-bg-secondary)] p-6 flex items-center gap-4">
                 <i class="fas fa-tags text-lg text-[var(--color-text-dark)]"></i>
                 <div>
-                    <h4 class="text-lg font-semibold text-white">5</h4>
+                    <h4 class="text-lg font-semibold text-white">{{ stats.categories_count }}</h4>
                     <p class="text-sm text-[var(--color-text-dark)]">Categories</p>
                 </div>
             </div>
@@ -72,143 +74,105 @@
         <!-- FILTER BAR -->
         <section class="flex flex-col md:flex-row items-center bg-transparent border border-[var(--color-border)] rounded-md mb-10 focus-within:ring-1 focus-within:ring-pink-500 focus-within:border-pink-500 divide-y md:divide-y-0 md:divide-x divide-[var(--color-border)]">
             
-            <div class="relative w-full md:w-auto md:flex-grow">
-                <i class="fas fa-search absolute left-4 top-1/2 -translate-y-1/2 text-[var(--color-text-dark)]"></i>
-                <input type="text" class="w-full bg-transparent border-none rounded-t-md md:rounded-l-md md:rounded-tr-none py-2.5 px-4 pl-10 text-[var(--color-text-light)] placeholder:text-[var(--color-text-dark)] focus:ring-0" placeholder="Search challenges...">
-            </div>
-            
-            <div class="flex-shrink-0 flex items-center justify-between md:justify-start gap-2 px-4 py-2.5 w-full md:w-auto">
-                <span class="text-sm text-[var(--color-text-dark)]">Category:</span>
-                <button class="flex items-center gap-1 text-[var(--color-text-light)] font-medium hover:text-pink-400 transition-colors">
-                    All Categories
-                    <i class="fas fa-chevron-down text-xs text-[var(--color-text-dark)]"></i>
-                </button>
-            </div>
+            <form method="get" class="flex w-full md:flex-1">
+                <div class="relative w-full md:w-auto md:flex-grow">
+                    <i class="fas fa-search absolute left-4 top-1/2 -translate-y-1/2 text-[var(--color-text-dark)]"></i>
+                    <input name="q" value="{{ q }}" type="text" class="w-full bg-transparent border-none rounded-t-md md:rounded-l-md md:rounded-tr-none py-2.5 px-4 pl-10 text-[var(--color-text-light)] placeholder:text-[var(--color-text-dark)] focus:ring-0" placeholder="Search challenges...">
+                </div>
 
-            <div class="flex-shrink-0 flex items-center justify-between md:justify-start gap-2 px-4 py-2.5 w-full md:w-auto rounded-b-md md:rounded-r-md md:rounded-bl-none">
-                <span class="text-sm text-[var(--color-text-dark)]">Difficulty:</span>
-                <button class="flex items-center gap-1 text-[var(--color-text-light)] font-medium hover:text-pink-400 transition-colors">
-                    All Levels
-                    <i class="fas fa-chevron-down text-xs text-[var(--color-text-dark)]"></i>
-                </button>
-            </div>
+                <div class="flex items-center gap-2 px-4 py-2.5">
+                    <label class="text-sm text-[var(--color-text-dark)] mr-2">Category:</label>
+                    <select name="category"
+                            onchange="this.form.submit()"
+                            class="bg-[var(--color-bg-secondary)] border border-[var(--color-border)]
+                                text-[var(--color-text-light)] px-2 py-1 rounded">
+                        <option class="!bg-[var(--color-bg-primary)]" value="">All Categories</option>
+                        {% for cat in categories %}
+                            <option class="!bg-[var(--color-bg-primary)]"
+                                    value="{{ cat.slug }}"
+                                    {% if cat.slug == selected_category %}selected{% endif %}>
+                                {{ cat.name }}
+                            </option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <div class="flex items-center gap-2 px-4 py-2.5 rounded-b-md md:rounded-r-md md:rounded-bl-none">
+                    <label class="text-sm text-[var(--color-text-dark)] mr-2">Difficulty:</label>
+                    <select name="difficulty"
+                            onchange="this.form.submit()"
+                            class="bg-[var(--color-bg-secondary)] border border-[var(--color-border)]
+                                text-[var(--color-text-light)] px-2 py-1 rounded">
+                        <option class="!bg-[var(--color-bg-primary)]" value="">All Levels</option>
+                        {% for value, label in DIFFICULTY_CHOICES %}
+                            <option class="!bg-[var(--color-bg-primary)]"
+                                    value="{{ value }}"
+                                    {% if value == selected_difficulty %}selected{% endif %}>
+                                {{ label }}
+                            </option>
+                        {% endfor %}
+                    </select>
+                </div>
+            </form>
         </section>
 
         <!-- CHALLENGES GRID -->
         <section>
-            <h2 class="text-2xl font-semibold text-white mb-6">Challenges (6)</h2>
+            <h2 class="text-2xl font-semibold text-white mb-6">Challenges ({{ challenges|length }})</h2>
+
             <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                
-                <!-- Card 1 -->
+                {% for c in challenges %}
                 <div class="bg-[var(--color-bg-secondary)] border border-[var(--color-border)] rounded-lg p-6 relative hover:border-pink-500/50 transition-colors">
+                    
+                    {% if c.is_completed %}
+                        <i class="fas fa-check-circle text-green-500 text-xl absolute top-6 right-6"></i>
+                    {% endif %}
+
                     <div class="flex items-start gap-4">
-                        <i class="fas fa-database text-2xl text-[var(--color-accent-pink)] mt-0.5"></i>
+                        <i class="{% if c.category.icon_class %}{{ c.category.icon_class }}{% else %}fa-solid fa-shield-halved{% endif %} text-2xl text-[var(--color-accent-pink)] mt-0.5"></i>
+
                         <div>
-                            <h3 class="text-lg font-semibold text-white">SQL Injection Basics</h3>
-                            <p class="text-sm text-[var(--color-text-dark)] mb-2">Web Security</p>
-                            <p class="text-sm text-[var(--color-text-light)] leading-relaxed">Learn the fundamentals of SQL injection attacks by exploiting a vulnerable login form.</p>
+                            <h3 class="text-lg font-semibold text-white">
+                                <a href="{% url 'challenge_detail' c.slug %}" class="hover:underline">{{ c.title }}</a>
+                            </h3>
+
+                            <p class="text-sm text-[var(--color-text-dark)] mb-2">{{ c.category.name }}</p>
+
+                            <p class="text-sm text-[var(--color-text-light)] leading-relaxed">
+                                {% if c.description %}{{ c.description|truncatechars:180 }}{% else %}<span class="text-[var(--color-text-dark)]">No description.</span>{% endif %}
+                            </p>
                         </div>
                     </div>
-                    <div class="flex items-center gap-4 mt-4 ml-10">
-                        <span class="px-3 py-1 text-xs font-medium rounded-full bg-green-900/50 text-green-300">Beginner</span>
-                        <span class="text-sm text-[var(--color-text-dark)]">100 points</span>
-                    </div>
-                    <span class="absolute bottom-6 right-6 text-xs text-[var(--color-text-dark)]">3 tools</span>
-                </div>
 
-                <!-- Card 2 -->
-                <div class="bg-[var(--color-bg-secondary)] border border-[var(--color-border)] rounded-lg p-6 relative hover:border-pink-500/50 transition-colors">
-                    <i class="fas fa-check-circle text-green-500 text-xl absolute top-6 right-6"></i>
-                    <div class="flex items-start gap-4">
-                        <i class="fas fa-code text-2xl text-[var(--color-accent-pink)] mt-0.5"></i>
-                        <div>
-                            <h3 class="text-lg font-semibold text-white">Cross-Site Scripting (XSS)</h3>
-                            <p class="text-sm text-[var(--color-text-dark)] mb-2">Web Security</p>
-                            <p class="text-sm text-[var(--color-text-light)] leading-relaxed">Discover and exploit XSS vulnerabilities in a web application to execute malicious JavaScript.</p>
-                        </div>
-                    </div>
                     <div class="flex items-center gap-4 mt-4 ml-10">
-                        <span class="px-3 py-1 text-xs font-medium rounded-full bg-green-900/50 text-green-300">Beginner</span>
-                        <span class="text-sm text-[var(--color-text-dark)]">120 points</span>
-                    </div>
-                    <span class="absolute bottom-6 right-6 text-xs text-[var(--color-text-dark)]">3 tools</span>
-                </div>
+                        {% if c.get_difficulty_display == "Easy" or c.difficulty == "easy" %}
+                            <span class="px-3 py-1 text-xs font-medium rounded-full bg-green-900/50 text-green-300">
+                                {{ c.get_difficulty_display }}
+                            </span>
+                        {% elif c.get_difficulty_display == "Medium" or c.difficulty == "medium" %}
+                            <span class="px-3 py-1 text-xs font-medium rounded-full bg-yellow-900/50 text-yellow-300">
+                                {{ c.get_difficulty_display }}
+                            </span>
+                        {% else %}
+                            <span class="px-3 py-1 text-xs font-medium rounded-full bg-red-900/50 text-red-300">
+                                {{ c.get_difficulty_display }}
+                            </span>
+                        {% endif %}
 
-                <!-- Card 3 -->
-                <div class="bg-[var(--color-bg-secondary)] border border-[var(--color-border)] rounded-lg p-6 relative hover:border-pink-500/50 transition-colors">
-                    <div class="flex items-start gap-4">
-                        <i class="fas fa-layer-group text-2xl text-[var(--color-accent-pink)] mt-0.5"></i>
-                        <div>
-                            <h3 class="text-lg font-semibold text-white">Buffer Overflow Exploitation</h3>
-                            <p class="text-sm text-[var(--color-text-dark)] mb-2">Binary Exploitation</p>
-                            <p class="text-sm text-[var(--color-text-light)] leading-relaxed">Master the art of buffer overflow attacks by exploiting a vulnerable C program.</p>
-                        </div>
+                        <span class="text-sm text-[var(--color-text-dark)]">{{ c.points }} points</span>
                     </div>
-                    <div class="flex items-center gap-4 mt-4 ml-10">
-                        <span class="px-3 py-1 text-xs font-medium rounded-full bg-yellow-900/50 text-yellow-300">Intermediate</span>
-                        <span class="text-sm text-[var(--color-text-dark)]">250 points</span>
-                    </div>
-                    <span class="absolute bottom-6 right-6 text-xs text-[var(--color-text-dark)]">4 tools</span>
-                </div>
 
-                <!-- Card 4 -->
-                <div class="bg-[var(--color-bg-secondary)] border border-[var(--color-border)] rounded-lg p-6 relative hover:border-pink-500/50 transition-colors">
-                    <div class="flex items-start gap-4">
-                        <i class="fas fa-user-secret text-2xl text-[var(--color-accent-pink)] mt-0.5"></i>
-                        <div>
-                            <h3 class="text-lg font-semibold text-white">Privilege Escalation</h3>
-                            <p class="text-sm text-[var(--color-text-dark)] mb-2">System Security</p>
-                            <p class="text-sm text-[var(--color-text-light)] leading-relaxed">Escalate privileges on a Linux system using various techniques and misconfigurations.</p>
-                        </div>
-                    </div>
-                    <div class="flex items-center gap-4 mt-4 ml-10">
-                        <span class="px-3 py-1 text-xs font-medium rounded-full bg-yellow-900/50 text-yellow-300">Intermediate</span>
-                        <span class="text-sm text-[var(--color-text-dark)]">220 points</span>
-                    </div>
-                    <span class="absolute bottom-6 right-6 text-xs text-[var(--color-text-dark)]">4 tools</span>
+                    <span class="absolute bottom-6 right-6 text-xs text-[var(--color-text-dark)]">
+                        {% if c.tools_count %}{{ c.tools_count }} tools{% else %}— tools{% endif %}
+                    </span>
                 </div>
-
-                <!-- Card 5 -->
-                <div class="bg-[var(--color-bg-secondary)] border border-[var(--color-border)] rounded-lg p-6 relative hover:border-pink-500/50 transition-colors">
-                    <div class="flex items-start gap-4">
-                        <i class="fas fa-key text-2xl text-[var(--color-accent-pink)] mt-0.5"></i>
-                        <div>
-                            <h3 class="text-lg font-semibold text-white">Cryptography Challenge</h3>
-                            <p class="text-sm text-[var(--color-text-dark)] mb-2">Cryptography</p>
-                            <p class="text-sm text-[var(--color-text-light)] leading-relaxed">Break weak cryptographic implementations and recover plaintext from ciphertext.</p>
-                        </div>
-                    </div>
-                    <div class="flex items-center gap-4 mt-4 ml-10">
-                        <span class="px-3 py-1 text-xs font-medium rounded-full bg-red-900/50 text-red-300">Advanced</span>
-                        <span class="text-sm text-[var(--color-text-dark)]">350 points</span>
-                    </div>
-                    <span class="absolute bottom-6 right-6 text-xs text-[var(--color-text-dark)]">4 tools</span>
-                </div>
-
-                <!-- Card 6 -->
-                <div class="bg-[var(--color-bg-secondary)] border border-[var(--color-border)] rounded-lg p-6 relative hover:border-pink-500/50 transition-colors">
-                    <div class="flex items-start gap-4">
-                        <i class="fas fa-skull-crossbones text-2xl text-[var(--color-accent-pink)] mt-0.5"></i>
-                        <div>
-                            <h3 class="text-lg font-semibold text-white">Advanced Persistent Threat Simulation</h3>
-                            <p class="text-sm text-[var(--color-text-dark)] mb-2">Advanced Techniques</p>
-                            <p class="text-sm text-[var(--color-text-light)] leading-relaxed">Simulate a multi-stage APT attack including reconnaissance, exploitation, and lateral movement.</p>
-                        </div>
-                    </div>
-                    <div class="flex items-center gap-4 mt-4 ml-10">
-                        <span class="px-3 py-1 text-xs font-medium rounded-full bg-purple-900/60 text-purple-300">Expert</span>
-                        <span class="text-sm text-[var(--color-text-dark)]">500 points</span>
-                    </div>
-                    <span class="absolute bottom-6 right-6 text-xs text-[var(--color-text-dark)]">4 tools</span>
-                </div>
-
+                {% empty %}
+                <p class="text-[var(--color-text-dark)]">No challenges found for the selected filters.</p>
+                {% endfor %}
             </div>
         </section>
     </main>
 
-    <!-- FOOTER -->
     <c-footer></c-footer>
-
 </body>
 </html>
-
