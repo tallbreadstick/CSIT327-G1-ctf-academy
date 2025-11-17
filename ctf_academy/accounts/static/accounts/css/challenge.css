@@ -1,0 +1,232 @@
+/* ==========================================
+   LINUX DARK THEME VARIABLES
+   ========================================== */
+:root {
+    --win-bg: rgba(32, 34, 37, 0.94);
+    --win-border: rgba(255, 255, 255, 0.08);
+    --win-header: linear-gradient(to bottom, #2F3136, #232427);
+
+    --accent-red: #e06c75;
+    --accent-yellow: #e5c07b;
+    --accent-green: #8ccf7e;
+
+    --taskbar-bg: rgba(17, 19, 20, 0.92);
+    --taskbar-hover: rgba(255,255,255,0.15);
+
+    --dropdown-bg: #1f2123;
+}
+
+/* ==========================================
+   DESKTOP & WINDOWS
+   ========================================== */
+.desktop-area {
+    position: absolute;
+    top: 0; left: 0;
+    right: 0; bottom: 48px;
+}
+
+.c-window {
+    position: absolute;
+    top: 120px;
+    left: 120px;
+    width: 600px;
+    height: 400px;
+
+    background: var(--win-bg);
+    border: 1px solid var(--win-border);
+    border-radius: 8px;
+    color: white;
+
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+
+    box-shadow: 0 0 20px rgba(0,0,0,0.55);
+    backdrop-filter: blur(4px);
+}
+
+/* ==========================================
+   GNOME/GTK STYLE WINDOW HEADER
+   ========================================== */
+.window-header {
+    height: 38px;
+    background: var(--win-header);
+    display: flex;
+    align-items: center;
+
+    padding: 0 12px;
+    position: relative;
+
+    /* GNOME style title centering */
+    justify-content: center;
+    user-select: none;
+    border-bottom: 1px solid rgba(255,255,255,0.06);
+}
+
+/* Centered title */
+.window-title {
+    position: absolute;
+    left: 50%;
+    transform: translateX(-50%);
+    font-size: 14px;
+    font-weight: 500;
+    color: #e1e1e1;
+}
+
+/* Right-aligned window controls */
+.win-controls {
+    margin-left: auto;
+    display: flex;
+    gap: 6px;
+}
+
+/* GNOME-style flat square buttons */
+.win-btn {
+    width: 18px;
+    height: 18px;
+    border-radius: 25%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    background: rgba(255,255,255,0.08);
+    border: none;
+    cursor: pointer;
+    transition: 0.15s ease;
+}
+
+.win-btn:hover {
+    background: rgba(255,255,255,0.2);
+}
+
+/* Hover colors (GTK-like subtle tint) */
+.win-close:hover { background: rgba(240, 70, 70, 0.4); }
+.win-max:hover   { background: rgba(140, 200, 255, 0.35); }
+.win-min:hover   { background: rgba(255, 255, 160, 0.3); }
+
+/* Window Body */
+.window-body {
+    flex-grow: 1;
+    padding: 12px;
+    overflow-y: auto;
+    font-size: 14px;
+    position: relative;
+
+    textarea {
+        padding: 8px;
+        box-sizing: border-box;
+    }
+}
+
+/* Resizer */
+.resizer {
+    position: absolute;
+    bottom: 0;
+    right: 0;
+    width: 14px;
+    height: 14px;
+    cursor: se-resize;
+}
+
+/* ==========================================
+   TASKBAR
+   ========================================== */
+.taskbar {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    height: 48px;
+    width: 100%;
+
+    background: var(--taskbar-bg);
+    border-top: 1px solid rgba(255,255,255,0.05);
+    backdrop-filter: blur(4px);
+
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+
+    padding: 0 12px;
+}
+
+/* Taskbar Layout Groups */
+.taskbar-left,
+.taskbar-center,
+.taskbar-right {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+/* Taskbar Icons */
+.taskbar-icon {
+    width: 36px;
+    height: 36px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    background: transparent;
+    border-radius: 6px;
+    color: white;
+    font-size: 20px;
+
+    transition: 0.15s ease;
+    cursor: pointer;
+}
+.taskbar-icon:hover {
+    background: var(--taskbar-hover);
+}
+
+/* Power Button */
+.power-button {
+    font-size: 20px;
+}
+
+/* Dropdown Menu */
+.dropdown-panel {
+    position: absolute;
+    left: 0;
+    top: 50px;
+
+    background: var(--dropdown-bg);
+    border: 1px solid rgba(255,255,255,0.12);
+    border-radius: 6px;
+
+    width: 140px;
+    padding: 6px 0;
+    z-index: 999;
+}
+
+.dropdown-panel button {
+    width: 100%;
+    background: transparent;
+    border: none;
+    color: white;
+    text-align: left;
+    padding: 8px 10px;
+    font-size: 14px;
+    cursor: pointer;
+}
+.dropdown-panel button:hover {
+    background: rgba(255,255,255,0.1);
+}
+
+/* Clock */
+.clock-text {
+    font-size: 15px;
+    letter-spacing: 1px;
+    padding: 6px 10px;
+    border-radius: 4px;
+    color: #dcdcdc;
+}
+
+/* Scrollbar */
+::-webkit-scrollbar { width: 8px; }
+::-webkit-scrollbar-thumb {
+    background: rgba(255,255,255,0.15);
+    border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+    background: rgba(255,255,255,0.25);
+}

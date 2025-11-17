@@ -5,168 +5,70 @@
 <meta charset="UTF-8">
 <title>CTF Desktop</title>
 {% tailwind_css %}
-<script>
-    // Clock
-    function updateClock() {
-        const clock = document.getElementById("clock");
-        const now = new Date();
-        clock.textContent = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-    }
-    setInterval(updateClock, 1000);
-    updateClock();
 
-    // Window functions
-    function openWindow(id) {
-        document.getElementById(id).classList.remove('hidden');
-    }
+<!-- External CSS -->
+<link rel="stylesheet" href="{% static 'accounts/css/challenge.css' %}">
+<!-- External JS -->
+<script defer src="{% static 'accounts/js/challenge.js' %}"></script>
 
-    function closeWindow(id) {
-        document.getElementById(id).classList.add('hidden');
-    }
-
-    // Draggable and resizable windows
-    function makeDraggableAndResizable(winId) {
-        const win = document.getElementById(winId);
-        const header = win.querySelector('.window-header');
-        const resizer = win.querySelector('.resizer');
-
-        let offsetX = 0, offsetY = 0, isDragging = false;
-        let startWidth = 0, startHeight = 0, startX = 0, startY = 0, isResizing = false;
-
-        header.addEventListener('mousedown', e => {
-            isDragging = true;
-            offsetX = e.clientX - win.offsetLeft;
-            offsetY = e.clientY - win.offsetTop;
-        });
-
-        document.addEventListener('mouseup', () => {
-            isDragging = false;
-            isResizing = false;
-        });
-
-        document.addEventListener('mousemove', e => {
-            if (isDragging) {
-                win.style.left = `${e.clientX - offsetX}px`;
-                win.style.top = `${e.clientY - offsetY}px`;
-            }
-            if (isResizing) {
-                const dx = e.clientX - startX;
-                const dy = e.clientY - startY;
-                win.style.width = `${startWidth + dx}px`;
-                win.style.height = `${startHeight + dy}px`;
-            }
-        });
-
-        resizer.addEventListener('mousedown', e => {
-            isResizing = true;
-            startWidth = win.offsetWidth;
-            startHeight = win.offsetHeight;
-            startX = e.clientX;
-            startY = e.clientY;
-            e.stopPropagation();
-        });
-    }
-
-    window.addEventListener('DOMContentLoaded', () => {
-        makeDraggableAndResizable('notes-window');
-    });
-
-    // Power options
-    function logout() {
-        window.location.href = "{% url 'logout_page' %}";
-    }
-
-    function powerOff() {
-        window.location.href = "{% url 'challenges_page' %}";
-    }
-
-    function restartChallenge() {
-        alert("Restart feature to be implemented");
-    }
-
-    // Toggle dropdown visibility
-    function togglePowerDropdown() {
-        document.getElementById('power-dropdown').classList.toggle('hidden');
-    }
-
-    // Close dropdown if clicked outside
-    document.addEventListener('click', function(event) {
-        const dropdown = document.getElementById('power-dropdown');
-        const btn = document.getElementById('power-btn');
-        if (!dropdown.contains(event.target) && !btn.contains(event.target)) {
-            dropdown.classList.add('hidden');
-        }
-    });
-</script>
 </head>
+
 <body class="m-0 p-0 h-screen w-screen font-mono relative"
       style="background: url('{% static 'accounts/images/desktop_wallpaper.png' %}') no-repeat center center fixed; background-size: cover;">
 
-<!-- Desktop area -->
-<div class="absolute top-0 left-0 right-0 bottom-12">
-    <!-- Notes window -->
-    <div id="notes-window" class="absolute top-20 left-20 w-96 h-64 bg-gray-900/95 text-white rounded-lg border border-white/10 shadow-xl flex flex-col">
-        <div class="window-header bg-gray-700/80 flex items-center justify-between px-3 h-9 cursor-move select-none">
-            <span class="text-sm">Challenge.txt</span>
-            <span class="close-btn text-red-400 cursor-pointer" onclick="closeWindow('notes-window')">✕</span>
-        </div>
-        <div class="window-content flex-grow p-3 overflow-y-auto text-sm">
-            <p><strong>Category:</strong> Web Exploitation</p>
-            <p><strong>Points:</strong> 100</p>
-            <p><strong>Description:</strong></p>
-            <p>This is a sample challenge description. Solve the puzzle to capture the flag!</p>
-        </div>
-        <!-- Resizer -->
-        <div class="resizer absolute bottom-0 right-0 w-4 h-4 cursor-se-resize bg-white/30"></div>
-    </div>
+<!-- ==============================
+     DESKTOP WORKSPACE
+     ============================== -->
+<div class="desktop-area">
+
+    <!-- EXAMPLE WINDOW (Text Editor / Notes) -->
+    <c-text 
+        editor_id="welcome-editor" 
+        editor_title="Welcome.txt"
+        content="{{ initial_text_content }}">
+    </c-text>
+
 </div>
 
-<!-- Taskbar pinned to bottom -->
-<div class="absolute bottom-0 left-0 w-full h-12 bg-gray-900/90 flex items-center justify-between px-4 border-t border-white/10 backdrop-blur">
+<!-- ==============================
+     TASKBAR
+     ============================== -->
+<div class="taskbar">
+    
+    <!-- LEFT SECTION: POWER + APP GRID -->
+    <div class="taskbar-left">
+        
+        <!-- Power Button -->
+        <div class="power-wrapper">
+            <button id="power-btn" class="taskbar-icon power-button">⏻</button>
 
-    <!-- Power options (left) -->
-    <div class="relative" id="power-container">
-        <button id="power-btn" 
-                class="w-10 h-10 bg-white/10 rounded-md flex items-center justify-center text-white text-lg cursor-pointer hover:bg-white/20">
-            ⏻
+            <div id="power-dropdown" class="dropdown-panel hidden">
+                <button onclick="window.location.href='{% url 'logout_page' %}'">Log Out</button>
+                <button onclick="window.location.href='{% url 'challenges_page' %}'">Power Off</button>
+                <button onclick="alert('Restart feature to be implemented')">Restart</button>
+            </div>
+        </div>
+
+        <!-- App Drawer Button -->
+        <button class="taskbar-icon appgrid-button">
+            ⋮⋮⋮
         </button>
-        <div id="power-dropdown" class="hidden absolute left-0 mt-1 w-36 bg-gray-800/90 border border-white/20 rounded-md flex flex-col shadow-md z-50">
-            <button class="px-3 py-2 text-sm text-white hover:bg-gray-700 text-left" onclick="window.location.href='{% url 'logout_page' %}'">Log Out</button>
-            <button class="px-3 py-2 text-sm text-white hover:bg-gray-700 text-left" onclick="window.location.href='{% url 'challenges_page' %}'">Power Off</button>
-            <button class="px-3 py-2 text-sm text-white hover:bg-gray-700 text-left" onclick="alert('Restart feature to be implemented')">Restart</button>
-        </div>
     </div>
 
-    <!-- Centered app icons -->
-    <div class="flex gap-3 mx-auto">
-        <div class="w-10 h-10 bg-white/10 rounded-md flex items-center justify-center text-white cursor-pointer text-xl" onclick="openWindow('notes-window')">📄</div>
-        <div class="w-10 h-10 bg-white/10 rounded-md flex items-center justify-center text-white cursor-pointer text-xl">🖥️</div>
-        <div class="w-10 h-10 bg-white/10 rounded-md flex items-center justify-center text-white cursor-pointer text-xl">🌐</div>
-        <div class="w-10 h-10 bg-white/10 rounded-md flex items-center justify-center text-white cursor-pointer text-xl">📁</div>
-        <div class="w-10 h-10 bg-white/10 rounded-md flex items-center justify-center text-white cursor-pointer text-xl">💻</div>
+    <!-- CENTER SECTION: APP ICONS -->
+    <div class="taskbar-center">
+        <button class="taskbar-icon" onclick="openWindow('notes-window')">📄</button>
+        <button class="taskbar-icon">🖥️</button>
+        <button class="taskbar-icon">🌐</button>
+        <button class="taskbar-icon">📁</button>
     </div>
 
-    <!-- Clock (right) -->
-    <div id="clock" class="text-white text-sm select-none"></div>
+    <!-- RIGHT SECTION: CLOCK -->
+    <div class="taskbar-right">
+        <span id="clock" class="clock-text">00:00</span>
+    </div>
+
 </div>
-
-<script>
-    const powerBtn = document.getElementById('power-btn');
-    const powerDropdown = document.getElementById('power-dropdown');
-
-    // Toggle dropdown
-    powerBtn.addEventListener('click', (e) => {
-        e.stopPropagation(); // prevent the click from reaching the document listener
-        powerDropdown.classList.toggle('hidden');
-    });
-
-    // Close dropdown when clicking outside
-    document.addEventListener('click', (e) => {
-        if (!powerDropdown.contains(e.target) && !powerBtn.contains(e.target)) {
-            powerDropdown.classList.add('hidden');
-        }
-    });
-</script>
 
 </body>
 </html>

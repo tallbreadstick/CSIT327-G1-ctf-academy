@@ -1,0 +1,11 @@
+<c-window 
+    id="{{ editor_id }}" 
+    title="{{ editor_title }}" 
+    show_controls="true"
+    body_content='
+        <textarea
+            wrap="soft"
+            class="absolute inset-0 bg-gray-900/40 text-white resize-none outline-none font-mono"
+        >{{ content|default:"" }}</textarea>
+    '>
+</c-window>

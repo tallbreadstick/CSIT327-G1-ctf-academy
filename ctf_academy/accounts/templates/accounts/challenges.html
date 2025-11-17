@@ -81,6 +81,19 @@
                 </div>
 
                 <div class="flex items-center gap-2 px-4 py-2.5">
+                    <label class="text-sm text-[var(--color-text-dark)] mr-2">Sort by:</label>
+                    <select name="sort_by"
+                            onchange="this.form.submit()"
+                            class="bg-[var(--color-bg-secondary)] border border-[var(--color-border)]
+                                text-[var(--color-text-light)] px-2 py-1 rounded">
+                        <option value="id" {% if selected_sort == "id" %}selected{% endif %}>ID</option>
+                        <option value="points" {% if selected_sort == "points" %}selected{% endif %}>Points</option>
+                        <option value="difficulty" {% if selected_sort == "difficulty" %}selected{% endif %}>Difficulty</option>
+                        <option value="title" {% if selected_sort == "title" %}selected{% endif %}>Title</option>
+                    </select>
+                </div>
+
+                <div class="flex items-center gap-2 px-4 py-2.5">
                     <label class="text-sm text-[var(--color-text-dark)] mr-2">Category:</label>
                     <select name="category"
                             onchange="this.form.submit()"

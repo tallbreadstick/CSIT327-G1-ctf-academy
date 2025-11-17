@@ -1,0 +1,18 @@
+<div id="{{ id }}" class="c-window hidden">
+    <div class="c-window-header window-header">
+        {% if show_controls %}
+        <div class="win-controls">
+            <button class="win-btn win-min" onclick="minimizeWindow('{{ id }}')">–</button>
+            <button class="win-btn win-max" onclick="maximizeWindow('{{ id }}')">☐</button>
+            <button class="win-btn win-close" onclick="closeWindow('{{ id }}')">×</button>
+        </div>
+        {% endif %}
+        <span class="window-title">{{ title|default:"Window" }}</span>
+    </div>
+
+    <div class="window-body">
+        {{ body_content|safe }}
+    </div>
+
+    <div class="resizer"></div>
+</div>

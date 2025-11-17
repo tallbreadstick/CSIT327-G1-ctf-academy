@@ -9,7 +9,7 @@ from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required, user_passes_test
 from .models import Challenge, Category, UserProfile
-from django.db.models import Sum, Q, Case, When, BooleanField
+from django.db.models import Sum, Q, Case, When, IntegerField
 
 # --- ADDED IMPORTS FOR JWT AND API PROTECTION ---
 from .serializers import MyTokenObtainPairSerializer
@@ -237,6 +237,7 @@ def challenges_page(request):
     q = request.GET.get("q", "").strip()
     category_slug = request.GET.get("category", "")
     difficulty = request.GET.get("difficulty", "")
+    sort_by = request.GET.get("sort_by", "id")  # default sort by id
 
     if category_slug:
         qs = qs.filter(category__slug=category_slug)
@@ -245,10 +246,32 @@ def challenges_page(request):
         qs = qs.filter(difficulty=difficulty)
 
     if q:
-        # simple search across title and description
-        qs = qs.filter(Q(title__icontains=q) | Q(description__icontains=q) | Q(category__name__icontains=q))
+        qs = qs.filter(
+            Q(title__icontains=q) |
+            Q(description__icontains=q) |
+            Q(category__name__icontains=q)
+        )
 
-    qs = qs.order_by("id")
+    # --- Sort mapping ---
+    sort_options = {
+        "id": "id",
+        "points": "-points",
+        "difficulty": "difficulty",  # you could also do "-difficulty" if needed
+        "title": "title",
+    }
+
+    qs = qs.order_by(sort_options.get(sort_by, "id"))
+
+    if sort_by == "difficulty":
+        qs = qs.annotate(
+            difficulty_order=Case(
+                When(difficulty="easy", then=1),
+                When(difficulty="medium", then=2),
+                When(difficulty="hard", then=3),
+                default=4,
+                output_field=IntegerField()
+            )
+        ).order_by("difficulty_order")
 
     # --- Stats: totals & points ---
     total_count = qs.count()
@@ -258,46 +281,34 @@ def challenges_page(request):
     in_progress_count = 0
     points_earned = 0
 
-    # Determine completion tracking strategy:
-    # 1) If Challenge has an M2M 'completed_by', use it.
-    # 2) Else try optional ChallengeProgress model (user, challenge, status).
-    # 3) Otherwise show zeros (no tracking implemented).
     try:
-        # Method 1: M2M completed_by
         if hasattr(Challenge, "completed_by"):
             completed_qs = qs.filter(completed_by=user)
             completed_count = completed_qs.count()
             points_earned = completed_qs.aggregate(points=Sum("points"))["points"] or 0
 
-            # annotate per-challenge flags
             challenges = list(qs)
             completed_ids = set(completed_qs.values_list("id", flat=True))
             for ch in challenges:
                 ch.is_completed = (ch.id in completed_ids)
-                # tools_count placeholder: if topology contains 'tools' list, count it
                 try:
                     ch.tools_count = len(ch.topology.get("tools", [])) if ch.topology else 0
                 except Exception:
                     ch.tools_count = 0
-
         else:
-            # Method 2: optional ChallengeProgress model
-            from .models import ChallengeProgress  # may not exist
+            from .models import ChallengeProgress
             progress_qs = ChallengeProgress.objects.filter(user=user, challenge__in=qs)
-
             completed_count = progress_qs.filter(status="completed").count()
             in_progress_count = progress_qs.filter(status="in_progress").count()
             points_earned = progress_qs.filter(status="completed").aggregate(points=Sum("challenge__points"))["points"] or 0
 
             challenges = list(qs)
-            # map statuses by challenge id
             prog_map = {p.challenge_id: p.status for p in progress_qs}
             for ch in challenges:
                 ch.is_completed = prog_map.get(ch.id) == "completed"
                 ch.tools_count = len(ch.topology.get("tools", [])) if ch.topology else 0
 
     except Exception:
-        # Fallback: no completion tracking available
         completed_count = 0
         in_progress_count = 0
         points_earned = 0
@@ -324,6 +335,7 @@ def challenges_page(request):
         "DIFFICULTY_CHOICES": Challenge.Difficulty.choices,
         "selected_category": category_slug,
         "selected_difficulty": difficulty,
+        "selected_sort": sort_by,
         "q": q,
         "stats": stats,
     }
@@ -337,10 +349,25 @@ def leaderboards_page(request):
 
 @login_required
 def challenge_detail(request, slug):
+    # Fetch the challenge
     challenge = get_object_or_404(Challenge, slug=slug)
     categories = Category.objects.all()
+
+    # Build initial content for the text editor
+    initial_content = f"""Challenge: {challenge.title}
+Category: {challenge.category.name if challenge.category else 'N/A'}
+Points: {challenge.points}
+Difficulty: {challenge.difficulty}
+
+Description:
+{challenge.description or 'No description provided.'}
+"""
+    # Mark safe for rendering inside <textarea>
+    from django.utils.safestring import mark_safe
+    initial_content = mark_safe(initial_content)
 
     return render(request, "accounts/challenge.html", {
         "challenge": challenge,
         "categories": categories,
+        "initial_text_content": initial_content,
     })
