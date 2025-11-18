@@ -1,0 +1,41 @@
+{% load static tailwind_tags %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Completed Challenges - CTF Academy</title>
+  {% tailwind_css %}
+</head>
+<body class="min-h-screen bg-gray-900 text-gray-100">
+  <c-navbar></c-navbar>
+  <main class="max-w-5xl mx-auto px-4 py-10">
+    <div class="flex items-center justify-between mb-6">
+      <h1 class="text-2xl font-semibold">Completed Challenges</h1>
+      <a href="{% url 'challenges_page' %}" class="text-sm text-pink-400 hover:underline">Back to Challenges</a>
+    </div>
+
+    {% if items %}
+      <ul class="space-y-3">
+        {% for it in items %}
+          <li class="bg-gray-800 border border-gray-700 rounded p-4 flex items-center justify-between">
+            <div>
+              <h3 class="font-semibold text-white">{{ it.title }}</h3>
+              <p class="text-sm text-gray-400">{{ it.category }}</p>
+              <p class="text-xs text-gray-500 mt-1">Completed on {{ it.completed_at|date:'M d, Y h:i A' }}</p>
+            </div>
+            <div class="flex items-center gap-3">
+              <a class="text-sm text-pink-400 hover:underline" href="{% url 'challenge_detail' it.slug %}?readonly=1">Revisit (read-only)</a>
+            </div>
+          </li>
+        {% endfor %}
+      </ul>
+    {% else %}
+      <div class="text-center py-16 border border-dashed border-gray-700 rounded">
+        <p class="text-gray-400">You haven’t completed any challenges yet.</p>
+        <a href="{% url 'challenges_page' %}" class="mt-2 inline-block text-sm text-pink-400 hover:underline">Explore challenges</a>
+      </div>
+    {% endif %}
+  </main>
+  <c-footer></c-footer>
+</body>
+</html>

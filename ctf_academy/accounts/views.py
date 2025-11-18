@@ -6,9 +6,10 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework import status
 from django.shortcuts import render, redirect, get_object_or_404
+from django.urls import reverse
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required, user_passes_test
-from .models import Challenge, Category, UserProfile, Favorite
+from .models import Challenge, Category, UserProfile, Favorite, ChallengeProgress
 from django.db.models import Sum, Q, Case, When, IntegerField
 from django.http import JsonResponse, HttpResponseBadRequest
 
@@ -434,11 +435,39 @@ Description:
         except Exception:
             is_favorite = False
 
+    # Pull last progress for resume and detect unsaved warnings
+    progress = None
+    last_state = None
+    unsaved_warning = False
+    try:
+        # Ensure a progress row exists as soon as a challenge is opened
+        progress, created = ChallengeProgress.objects.get_or_create(
+            user=request.user, challenge=challenge,
+            defaults={"status": ChallengeProgress.Status.ATTEMPTED}
+        )
+        last_state = progress.last_state
+        if not progress.last_saved_ok and progress.status != ChallengeProgress.Status.COMPLETED:
+            unsaved_warning = True
+        # When viewing non-readonly, switch to in-progress and pessimistically mark save as not-ok
+        if request.GET.get("readonly") != "1":
+            if progress.status in [ChallengeProgress.Status.ATTEMPTED, ChallengeProgress.Status.UNSOLVED]:
+                progress.status = ChallengeProgress.Status.IN_PROGRESS
+            progress.last_saved_ok = False
+            progress.save(update_fields=["status", "last_saved_ok", "updated_at"])
+    except Exception:
+        pass
+
+    readonly = request.GET.get("readonly") == "1"
+
     return render(request, "accounts/challenge.html", {
         "challenge": challenge,
         "categories": categories,
         "initial_text_content": initial_content,
         "is_favorite": is_favorite,
+        "readonly": readonly,
+        "last_state": last_state,
+        "unsaved_warning": unsaved_warning,
+        "save_progress_url": reverse('save_progress', args=[challenge.id]),
     })
 
 
@@ -467,3 +496,80 @@ def favorites_page(request):
     for ch in challenges:
         ch.is_favorite = True
     return render(request, "accounts/favorites.html", {"challenges": challenges})
+
+
+@login_required
+def save_progress(request, challenge_id: int):
+    """Persist user's last_state for a challenge and mark save as successful.
+    Expected JSON body: { "last_state": <any json-serializable> }
+    """
+    if request.method != "POST":
+        return HttpResponseBadRequest("POST required")
+    challenge = get_object_or_404(Challenge, id=challenge_id)
+    import json
+    try:
+        payload = json.loads(request.body.decode("utf-8") or "{}")
+    except Exception:
+        payload = {}
+    last_state = payload.get("last_state")
+    try:
+        prog, _ = ChallengeProgress.objects.get_or_create(
+            user=request.user, challenge=challenge,
+            defaults={"status": ChallengeProgress.Status.IN_PROGRESS}
+        )
+        prog.last_state = last_state
+        prog.last_saved_ok = True
+        if prog.status == ChallengeProgress.Status.ATTEMPTED:
+            prog.status = ChallengeProgress.Status.IN_PROGRESS
+        prog.save(update_fields=["last_state", "last_saved_ok", "status", "updated_at"])
+        return JsonResponse({"ok": True})
+    except Exception:
+        return JsonResponse({"ok": False}, status=500)
+
+
+@login_required
+def completed_challenges_page(request):
+    """List all challenges the user has completed with completion date."""
+    progress_qs = ChallengeProgress.objects.filter(
+        user=request.user, status=ChallengeProgress.Status.COMPLETED
+    ).select_related("challenge", "challenge__category").order_by("-completed_at")
+
+    items = []
+    for p in progress_qs:
+        ch = p.challenge
+        items.append({
+            "id": ch.id,
+            "slug": ch.slug,
+            "title": ch.title,
+            "category": ch.category.name if ch.category else "",
+            "completed_at": p.completed_at,
+        })
+
+    return render(request, "accounts/completed_challenges.html", {"items": items})
+
+
+@login_required
+def incomplete_challenges_page(request):
+    """List attempted/unsolved/in-progress challenges with status and warnings."""
+    progress_qs = ChallengeProgress.objects.filter(
+        user=request.user,
+        status__in=[
+            ChallengeProgress.Status.ATTEMPTED,
+            ChallengeProgress.Status.IN_PROGRESS,
+            ChallengeProgress.Status.UNSOLVED,
+        ],
+    ).select_related("challenge", "challenge__category").order_by("-updated_at")
+
+    items = []
+    for p in progress_qs:
+        ch = p.challenge
+        items.append({
+            "id": ch.id,
+            "slug": ch.slug,
+            "title": ch.title,
+            "category": ch.category.name if ch.category else "",
+            "status": p.get_status_display(),
+            "unsaved": not p.last_saved_ok,
+        })
+
+    return render(request, "accounts/incomplete_challenges.html", {"items": items})

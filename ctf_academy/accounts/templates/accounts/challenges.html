@@ -130,9 +130,11 @@
             </form>
         </section>
 
-        <!-- FAVORITES LINK -->
-        <div class="flex justify-end mb-4">
-            <a href="{% url 'favorites_page' %}" class="text-sm text-pink-400 hover:underline">View Favorites</a>
+        <!-- QUICK LINKS -->
+        <div class="flex gap-4 justify-end mb-4 text-sm">
+            <a href="{% url 'incomplete_challenges_page' %}" class="text-pink-400 hover:underline">Incomplete</a>
+            <a href="{% url 'completed_challenges_page' %}" class="text-pink-400 hover:underline">Completed</a>
+            <a href="{% url 'favorites_page' %}" class="text-pink-400 hover:underline">Favorites</a>
         </div>
 
         <!-- CHALLENGES GRID -->

@@ -18,7 +18,12 @@
 <!-- ==============================
      DESKTOP WORKSPACE
      ============================== -->
-<div class="desktop-area">
+<div class="desktop-area" data-readonly="{{ readonly|yesno:'true,false' }}" data-save-url="{{ save_progress_url }}">
+    {% if readonly %}
+    <div class="absolute top-0 left-0 right-0 z-50 text-center bg-yellow-500/20 text-yellow-300 text-xs py-1">
+        Read-only mode: interactions may be disabled.
+    </div>
+    {% endif %}
     <!-- Favorite toggle floating button -->
     <button
         class="absolute top-4 right-4 p-1 rounded bg-black/40 hover:bg-black/60"
@@ -36,11 +41,13 @@
         editor_title="Welcome.txt"
         content="{{ initial_text_content }}">
     </c-text>
+    {% if not readonly %}
     <c-terminal
         terminal_id="terminal-default"
         terminal_title="Terminal"
         default_open="true">
     </c-terminal>
+    {% endif %}
 </div>
 
 <!-- ==============================
