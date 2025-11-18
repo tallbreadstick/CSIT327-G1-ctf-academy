@@ -1,0 +1,58 @@
+{% load static tailwind_tags %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Favorites - CTF Academy</title>
+  <link rel="icon" type="image/png" href="{% static 'accounts/images/logo.png' %}">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
+  {% tailwind_css %}
+  <script defer src="{% static 'accounts/js/favorites.js' %}"></script>
+  <style>
+    :root { --bg1:#0d1117; --bg2:#161b22; --border:#30363d; --text:#e6edf3; --muted:#8b949e; }
+    body { background:var(--bg1); color:var(--text); }
+  </style>
+</head>
+<body class="min-h-screen">
+  <c-navbar></c-navbar>
+  <main class="container mx-auto max-w-5xl px-4 py-10">
+    <div class="flex items-center justify-between mb-6">
+      <h1 class="text-2xl font-semibold">Your Favorites</h1>
+      <a href="{% url 'challenges_page' %}" class="text-sm text-pink-400 hover:underline">Back to Challenges</a>
+    </div>
+
+    {% if challenges %}
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+        {% for c in challenges %}
+          <div class="bg-[var(--bg2)] border border-[var(--border)] rounded-lg p-6 relative">
+            <button class="absolute top-5 right-5 p-1"
+                    aria-label="Toggle favorite"
+                    data-action="toggle-favorite"
+                    data-toggle-url="{% url 'toggle_favorite' c.id %}"
+                    data-challenge-id="{{ c.id }}"
+                    data-favorited="1">
+              <i class="fas fa-star text-yellow-400 text-xl"></i>
+            </button>
+            <div class="flex items-start gap-3">
+              <i class="{% if c.category.icon_class %}{{ c.category.icon_class }}{% else %}fa-solid fa-shield-halved{% endif %} text-2xl text-pink-400"></i>
+              <div>
+                <h3 class="text-lg font-semibold"><a class="hover:underline" href="{% url 'challenge_detail' c.slug %}">{{ c.title }}</a></h3>
+                <p class="text-sm text-[var(--muted)]">{{ c.category.name }} • {{ c.points }} pts • {{ c.get_difficulty_display }}</p>
+                <p class="text-sm mt-2">{% if c.description %}{{ c.description|truncatechars:160 }}{% else %}<span class="text-[var(--muted)]">No description.</span>{% endif %}</p>
+              </div>
+            </div>
+          </div>
+        {% endfor %}
+      </div>
+    {% else %}
+      <div class="text-center py-16 border border-dashed border-[var(--border)] rounded">
+        <i class="far fa-star text-4xl text-[var(--muted)]"></i>
+        <p class="mt-4 text-[var(--muted)]">You have no favorites yet.</p>
+        <a class="mt-2 inline-block text-sm text-pink-400 hover:underline" href="{% url 'challenges_page' %}">Explore challenges</a>
+      </div>
+    {% endif %}
+  </main>
+  <c-footer></c-footer>
+</body>
+</html>

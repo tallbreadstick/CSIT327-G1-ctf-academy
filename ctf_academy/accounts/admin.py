@@ -1,3 +1,24 @@
 from django.contrib import admin
+from .models import Category, Challenge, UserProfile, Favorite
 
-# Register your models here.
+@admin.register(Category)
+class CategoryAdmin(admin.ModelAdmin):
+	list_display = ("name", "slug", "icon_class")
+	prepopulated_fields = {"slug": ("name",)}
+
+@admin.register(Challenge)
+class ChallengeAdmin(admin.ModelAdmin):
+	list_display = ("title", "category", "difficulty", "points", "is_active")
+	list_filter = ("category", "difficulty", "is_active")
+	search_fields = ("title", "description")
+	prepopulated_fields = {"slug": ("title",)}
+
+@admin.register(UserProfile)
+class UserProfileAdmin(admin.ModelAdmin):
+	list_display = ("user", "updated_at")
+
+@admin.register(Favorite)
+class FavoriteAdmin(admin.ModelAdmin):
+	list_display = ("user", "challenge", "created_at")
+	list_filter = ("user", "challenge")
+	search_fields = ("user__username", "challenge__title")

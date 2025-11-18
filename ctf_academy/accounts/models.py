@@ -165,3 +165,17 @@ class Challenge(models.Model):
 
     def get_absolute_url(self):
         return reverse('challenge_detail', args=[self.slug])
+
+
+class Favorite(models.Model):
+    """Junction table: a user favorited a challenge."""
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="favorites")
+    challenge = models.ForeignKey(Challenge, on_delete=models.CASCADE, related_name="favorited_by")
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        unique_together = ("user", "challenge")
+        indexes = [models.Index(fields=["user", "challenge"]) ]
+
+    def __str__(self) -> str:
+        return f"{self.user.username} • {self.challenge.title}"

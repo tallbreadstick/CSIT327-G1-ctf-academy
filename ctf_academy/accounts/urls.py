@@ -13,7 +13,9 @@ from .views import (
     MyTokenObtainPairView,
     challenges_page, # <-- ADD THIS,
     challenge_detail,
-    leaderboards_page
+    leaderboards_page,
+    toggle_favorite,
+    favorites_page,
 )
 # --- ADD THESE IMPORTS ---
 from rest_framework_simplejwt.views import (
@@ -39,4 +41,6 @@ urlpatterns = [
     path("challenges/", challenges_page, name="challenges_page"),
     path("leaderboards/", leaderboards_page, name="leaderboards_page"),
     path("challenges/<slug:slug>/", challenge_detail, name="challenge_detail"),
+    path("favorites/", favorites_page, name="favorites_page"),
+    path("favorites/toggle/<int:challenge_id>/", toggle_favorite, name="toggle_favorite"),
 ]

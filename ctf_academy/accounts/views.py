@@ -8,8 +8,9 @@ from rest_framework import status
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required, user_passes_test
-from .models import Challenge, Category, UserProfile
+from .models import Challenge, Category, UserProfile, Favorite
 from django.db.models import Sum, Q, Case, When, IntegerField
+from django.http import JsonResponse, HttpResponseBadRequest
 
 # --- ADDED IMPORTS FOR JWT AND API PROTECTION ---
 from .serializers import MyTokenObtainPairSerializer
@@ -320,6 +321,15 @@ def challenges_page(request):
             except Exception:
                 ch.tools_count = 0
 
+    # Favorites for current user
+    try:
+        favorite_ids = set(Favorite.objects.filter(user=user).values_list("challenge_id", flat=True))
+    except Exception:
+        favorite_ids = set()
+
+    for ch in challenges:
+        ch.is_favorite = ch.id in favorite_ids
+
     stats = {
         "total": total_count,
         "points_total": points_total,
@@ -366,8 +376,44 @@ Description:
     from django.utils.safestring import mark_safe
     initial_content = mark_safe(initial_content)
 
+    # Favorite state for this challenge
+    is_favorite = False
+    if request.user.is_authenticated:
+        try:
+            is_favorite = Favorite.objects.filter(user=request.user, challenge=challenge).exists()
+        except Exception:
+            is_favorite = False
+
     return render(request, "accounts/challenge.html", {
         "challenge": challenge,
         "categories": categories,
         "initial_text_content": initial_content,
+        "is_favorite": is_favorite,
     })
+
+
+@login_required
+def toggle_favorite(request, challenge_id: int):
+    if request.method != "POST":
+        return HttpResponseBadRequest("POST required")
+    challenge = get_object_or_404(Challenge, id=challenge_id)
+    try:
+        fav, created = Favorite.objects.get_or_create(user=request.user, challenge=challenge)
+        if created:
+            return JsonResponse({"favorited": True})
+        fav.delete()
+        return JsonResponse({"favorited": False})
+    except Exception:
+        return JsonResponse({"error": "Unable to save favorite. Please try again."}, status=500)
+
+
+@login_required
+def favorites_page(request):
+    try:
+        favs = Favorite.objects.filter(user=request.user).select_related("challenge", "challenge__category").order_by("-created_at")
+    except Exception:
+        favs = []
+    challenges = [f.challenge for f in favs] if hasattr(favs, '__iter__') else []
+    for ch in challenges:
+        ch.is_favorite = True
+    return render(request, "accounts/favorites.html", {"challenges": challenges})
