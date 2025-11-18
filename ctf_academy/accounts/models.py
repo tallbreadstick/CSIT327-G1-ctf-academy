@@ -165,3 +165,58 @@ class Challenge(models.Model):
 
     def get_absolute_url(self):
         return reverse('challenge_detail', args=[self.slug])
+
+
+class Favorite(models.Model):
+    """Junction table: a user favorited a challenge."""
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="favorites")
+    challenge = models.ForeignKey(Challenge, on_delete=models.CASCADE, related_name="favorited_by")
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        unique_together = ("user", "challenge")
+        indexes = [models.Index(fields=["user", "challenge"]) ]
+
+    def __str__(self) -> str:
+        return f"{self.user.username} • {self.challenge.title}"
+
+
+class ChallengeProgress(models.Model):
+    """Tracks a user's progress on a challenge.
+    Provides the basis for Completed and Incomplete lists and resuming work.
+    """
+    class Status(models.TextChoices):
+        ATTEMPTED = "attempted", "Attempted"
+        IN_PROGRESS = "in_progress", "In Progress"
+        COMPLETED = "completed", "Completed"
+        UNSOLVED = "unsolved", "Unsolved"
+
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="challenge_progress")
+    challenge = models.ForeignKey(Challenge, on_delete=models.CASCADE, related_name="progress")
+    status = models.CharField(max_length=20, choices=Status.choices, default=Status.ATTEMPTED)
+
+    # Optional state for resuming work (editor contents, cursor, etc.)
+    last_state = models.JSONField(blank=True, null=True)
+
+    # If the client failed to save progress last time
+    last_saved_ok = models.BooleanField(default=True)
+
+    started_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    completed_at = models.DateTimeField(blank=True, null=True)
+
+    class Meta:
+        unique_together = ("user", "challenge")
+        indexes = [
+            models.Index(fields=["user", "challenge"]),
+            models.Index(fields=["user", "status"]),
+        ]
+
+    def mark_completed(self):
+        self.status = self.Status.COMPLETED
+        if not self.completed_at:
+            self.completed_at = timezone.now()
+        self.save(update_fields=["status", "completed_at", "updated_at"])
+
+    def __str__(self) -> str:
+        return f"{self.user.username} → {self.challenge.title} [{self.status}]"

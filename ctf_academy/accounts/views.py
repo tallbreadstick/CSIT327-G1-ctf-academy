@@ -6,10 +6,12 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework import status
 from django.shortcuts import render, redirect, get_object_or_404
+from django.urls import reverse
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required, user_passes_test
-from .models import Challenge, Category, UserProfile
+from .models import Challenge, Category, UserProfile, Favorite, ChallengeProgress
 from django.db.models import Sum, Q, Case, When, IntegerField
+from django.http import JsonResponse, HttpResponseBadRequest
 
 # --- ADDED IMPORTS FOR JWT AND API PROTECTION ---
 from .serializers import MyTokenObtainPairSerializer
@@ -320,6 +322,15 @@ def challenges_page(request):
             except Exception:
                 ch.tools_count = 0
 
+    # Favorites for current user
+    try:
+        favorite_ids = set(Favorite.objects.filter(user=user).values_list("challenge_id", flat=True))
+    except Exception:
+        favorite_ids = set()
+
+    for ch in challenges:
+        ch.is_favorite = ch.id in favorite_ids
+
     stats = {
         "total": total_count,
         "points_total": points_total,
@@ -345,7 +356,57 @@ def challenges_page(request):
 
 @login_required
 def leaderboards_page(request):
-    return render(request, "accounts/leaderboards.html")
+    """
+    Dynamic leaderboards backed by the existing database.
+    There is no scoring system yet, so everyone is shown with 0 points.
+    Ordering falls back to most recent users first so the page looks alive.
+    """
+    # Pull active users from DB (Supabase Postgres via Django settings)
+    users_qs = User.objects.filter(is_active=True).order_by("-date_joined")
+
+    leaders = []
+    for u in users_qs:
+        # Try to grab an inline image from profile if present
+        image_uri = None
+        try:
+            if hasattr(u, "profile"):
+                img_b64 = u.profile.get_base64_image()
+                if img_b64:
+                    image_uri = f"data:image/jpeg;base64,{img_b64}"
+        except Exception:
+            image_uri = None
+
+        leaders.append({
+            "id": u.id,
+            "username": u.username,
+            "points": 0,            # placeholder until scoring lands
+            "challenges": 0,        # placeholder
+            "streak": 0,            # placeholder
+            "image_uri": image_uri,
+            "date_joined": u.date_joined,
+        })
+
+    # Top 3 for podium, rest for table
+    top = leaders[:3]
+    rest = leaders[3:]
+    start_rank = len(top) + 1
+
+    # Current user's rank (1-based) if present in list
+    current_user_rank = None
+    for idx, row in enumerate(leaders, start=1):
+        if row["id"] == request.user.id:
+            current_user_rank = idx
+            break
+
+    context = {
+        "top": top,
+        "leaders": rest,
+        "all_leaders": leaders,  # optional full list if template needs it
+        "current_user_rank": current_user_rank,
+        "start_rank": start_rank,
+    }
+
+    return render(request, "accounts/leaderboards.html", context)
 
 @login_required
 def challenge_detail(request, slug):
@@ -366,8 +427,149 @@ Description:
     from django.utils.safestring import mark_safe
     initial_content = mark_safe(initial_content)
 
+    # Favorite state for this challenge
+    is_favorite = False
+    if request.user.is_authenticated:
+        try:
+            is_favorite = Favorite.objects.filter(user=request.user, challenge=challenge).exists()
+        except Exception:
+            is_favorite = False
+
+    # Pull last progress for resume and detect unsaved warnings
+    progress = None
+    last_state = None
+    unsaved_warning = False
+    try:
+        # Ensure a progress row exists as soon as a challenge is opened
+        progress, created = ChallengeProgress.objects.get_or_create(
+            user=request.user, challenge=challenge,
+            defaults={"status": ChallengeProgress.Status.ATTEMPTED}
+        )
+        last_state = progress.last_state
+        if not progress.last_saved_ok and progress.status != ChallengeProgress.Status.COMPLETED:
+            unsaved_warning = True
+        # When viewing non-readonly, switch to in-progress and pessimistically mark save as not-ok
+        if request.GET.get("readonly") != "1":
+            if progress.status in [ChallengeProgress.Status.ATTEMPTED, ChallengeProgress.Status.UNSOLVED]:
+                progress.status = ChallengeProgress.Status.IN_PROGRESS
+            progress.last_saved_ok = False
+            progress.save(update_fields=["status", "last_saved_ok", "updated_at"])
+    except Exception:
+        pass
+
+    readonly = request.GET.get("readonly") == "1"
+
     return render(request, "accounts/challenge.html", {
         "challenge": challenge,
         "categories": categories,
         "initial_text_content": initial_content,
+        "is_favorite": is_favorite,
+        "readonly": readonly,
+        "last_state": last_state,
+        "unsaved_warning": unsaved_warning,
+        "save_progress_url": reverse('save_progress', args=[challenge.id]),
     })
+
+
+@login_required
+def toggle_favorite(request, challenge_id: int):
+    if request.method != "POST":
+        return HttpResponseBadRequest("POST required")
+    challenge = get_object_or_404(Challenge, id=challenge_id)
+    try:
+        fav, created = Favorite.objects.get_or_create(user=request.user, challenge=challenge)
+        if created:
+            return JsonResponse({"favorited": True})
+        fav.delete()
+        return JsonResponse({"favorited": False})
+    except Exception:
+        return JsonResponse({"error": "Unable to save favorite. Please try again."}, status=500)
+
+
+@login_required
+def favorites_page(request):
+    try:
+        favs = Favorite.objects.filter(user=request.user).select_related("challenge", "challenge__category").order_by("-created_at")
+    except Exception:
+        favs = []
+    challenges = [f.challenge for f in favs] if hasattr(favs, '__iter__') else []
+    for ch in challenges:
+        ch.is_favorite = True
+    return render(request, "accounts/favorites.html", {"challenges": challenges})
+
+
+@login_required
+def save_progress(request, challenge_id: int):
+    """Persist user's last_state for a challenge and mark save as successful.
+    Expected JSON body: { "last_state": <any json-serializable> }
+    """
+    if request.method != "POST":
+        return HttpResponseBadRequest("POST required")
+    challenge = get_object_or_404(Challenge, id=challenge_id)
+    import json
+    try:
+        payload = json.loads(request.body.decode("utf-8") or "{}")
+    except Exception:
+        payload = {}
+    last_state = payload.get("last_state")
+    try:
+        prog, _ = ChallengeProgress.objects.get_or_create(
+            user=request.user, challenge=challenge,
+            defaults={"status": ChallengeProgress.Status.IN_PROGRESS}
+        )
+        prog.last_state = last_state
+        prog.last_saved_ok = True
+        if prog.status == ChallengeProgress.Status.ATTEMPTED:
+            prog.status = ChallengeProgress.Status.IN_PROGRESS
+        prog.save(update_fields=["last_state", "last_saved_ok", "status", "updated_at"])
+        return JsonResponse({"ok": True})
+    except Exception:
+        return JsonResponse({"ok": False}, status=500)
+
+
+@login_required
+def completed_challenges_page(request):
+    """List all challenges the user has completed with completion date."""
+    progress_qs = ChallengeProgress.objects.filter(
+        user=request.user, status=ChallengeProgress.Status.COMPLETED
+    ).select_related("challenge", "challenge__category").order_by("-completed_at")
+
+    items = []
+    for p in progress_qs:
+        ch = p.challenge
+        items.append({
+            "id": ch.id,
+            "slug": ch.slug,
+            "title": ch.title,
+            "category": ch.category.name if ch.category else "",
+            "completed_at": p.completed_at,
+        })
+
+    return render(request, "accounts/completed_challenges.html", {"items": items})
+
+
+@login_required
+def incomplete_challenges_page(request):
+    """List attempted/unsolved/in-progress challenges with status and warnings."""
+    progress_qs = ChallengeProgress.objects.filter(
+        user=request.user,
+        status__in=[
+            ChallengeProgress.Status.ATTEMPTED,
+            ChallengeProgress.Status.IN_PROGRESS,
+            ChallengeProgress.Status.UNSOLVED,
+        ],
+    ).select_related("challenge", "challenge__category").order_by("-updated_at")
+
+    items = []
+    for p in progress_qs:
+        ch = p.challenge
+        items.append({
+            "id": ch.id,
+            "slug": ch.slug,
+            "title": ch.title,
+            "category": ch.category.name if ch.category else "",
+            "status": p.get_status_display(),
+            "unsaved": not p.last_saved_ok,
+        })
+
+    return render(request, "accounts/incomplete_challenges.html", {"items": items})

@@ -189,3 +189,58 @@ document.addEventListener("DOMContentLoaded", () => {
         });
     });
 });
+
+/* =======================================================
+     PROGRESS SAVE (resume + unsaved warning support)
+     ======================================================= */
+document.addEventListener("DOMContentLoaded", () => {
+    const area = document.querySelector('.desktop-area');
+    if(!area) return;
+    const readonly = area.getAttribute('data-readonly') === 'true';
+    const saveUrl = area.getAttribute('data-save-url');
+    if(readonly || !saveUrl) return;
+
+    function getCookie(name){
+        const value = `; ${document.cookie}`;
+        const parts = value.split(`; ${name}=`);
+        if(parts.length === 2) return parts.pop().split(';').shift();
+    }
+
+    function collectState(){
+        // Minimal example: capture text editor contents if present
+        const editor = document.querySelector('#welcome-editor textarea');
+        const text = editor ? editor.value : null;
+        return { text };
+    }
+
+    async function saveOnce(){
+        try{
+            const body = JSON.stringify({ last_state: collectState() });
+            await fetch(saveUrl, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': getCookie('csrftoken'),
+                    'X-Requested-With': 'XMLHttpRequest'
+                },
+                body
+            });
+        }catch(e){
+            // ignore; server will keep last_saved_ok=false and UI will show warning
+        }
+    }
+
+    // Save shortly after load and periodically
+    setTimeout(saveOnce, 1500);
+    const interval = setInterval(saveOnce, 15000);
+    window.addEventListener('beforeunload', () => {
+        clearInterval(interval);
+        // Try to save one last time (best effort)
+        if(navigator.sendBeacon){
+            const data = new Blob([JSON.stringify({ last_state: collectState() })], {type:'application/json'});
+            navigator.sendBeacon(saveUrl, data);
+        }else{
+            saveOnce();
+        }
+    });
+});

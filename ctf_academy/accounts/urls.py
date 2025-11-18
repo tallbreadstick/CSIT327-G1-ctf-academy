@@ -13,7 +13,12 @@ from .views import (
     MyTokenObtainPairView,
     challenges_page, # <-- ADD THIS,
     challenge_detail,
-    leaderboards_page
+    leaderboards_page,
+    completed_challenges_page,
+    incomplete_challenges_page,
+    save_progress,
+    toggle_favorite,
+    favorites_page,
 )
 # --- ADD THESE IMPORTS ---
 from rest_framework_simplejwt.views import (
@@ -38,5 +43,10 @@ urlpatterns = [
     # --- ADD THIS NEW PAGE ---
     path("challenges/", challenges_page, name="challenges_page"),
     path("leaderboards/", leaderboards_page, name="leaderboards_page"),
+    path("challenges/completed/", completed_challenges_page, name="completed_challenges_page"),
+    path("challenges/incomplete/", incomplete_challenges_page, name="incomplete_challenges_page"),
+    path("challenges/progress/save/<int:challenge_id>/", save_progress, name="save_progress"),
     path("challenges/<slug:slug>/", challenge_detail, name="challenge_detail"),
+    path("favorites/", favorites_page, name="favorites_page"),
+    path("favorites/toggle/<int:challenge_id>/", toggle_favorite, name="toggle_favorite"),
 ]

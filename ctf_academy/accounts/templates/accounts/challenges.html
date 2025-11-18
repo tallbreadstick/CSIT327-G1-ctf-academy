@@ -8,6 +8,7 @@
     <link rel="icon" type="image/png" href="{% static 'accounts/images/logo.png' %}">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
     {% tailwind_css %}
+    <script defer src="{% static 'accounts/js/favorites.js' %}"></script>
 
     <style>
         :root {
@@ -129,6 +130,13 @@
             </form>
         </section>
 
+        <!-- QUICK LINKS -->
+        <div class="flex gap-4 justify-end mb-4 text-sm">
+            <a href="{% url 'incomplete_challenges_page' %}" class="text-pink-400 hover:underline">Incomplete</a>
+            <a href="{% url 'completed_challenges_page' %}" class="text-pink-400 hover:underline">Completed</a>
+            <a href="{% url 'favorites_page' %}" class="text-pink-400 hover:underline">Favorites</a>
+        </div>
+
         <!-- CHALLENGES GRID -->
         <section>
             <h2 class="text-2xl font-semibold text-white mb-6">Challenges ({{ challenges|length }})</h2>
@@ -138,8 +146,21 @@
                 <div class="bg-[var(--color-bg-secondary)] border border-[var(--color-border)] rounded-lg p-6 relative hover:border-pink-500/50 transition-colors">
                     
                     {% if c.is_completed %}
-                        <i class="fas fa-check-circle text-green-500 text-xl absolute top-6 right-6"></i>
+                        <i class="fas fa-check-circle text-green-500 text-xl absolute top-6 right-12"></i>
                     {% endif %}
+
+                    <!-- Favorite star -->
+                    <button
+                        class="absolute top-5 right-5 p-1"
+                        title="Toggle favorite"
+                        aria-label="Toggle favorite"
+                        aria-pressed="{{ c.is_favorite|yesno:'true,false' }}"
+                        data-action="toggle-favorite"
+                        data-toggle-url="{% url 'toggle_favorite' c.id %}"
+                        data-challenge-id="{{ c.id }}"
+                        data-favorited="{{ c.is_favorite|yesno:'1,0' }}">
+                        <i class="{% if c.is_favorite %}fas text-yellow-400{% else %}far text-gray-500{% endif %} fa-star text-xl"></i>
+                    </button>
 
                     <div class="flex items-start gap-4">
                         <i class="{% if c.category.icon_class %}{{ c.category.icon_class }}{% else %}fa-solid fa-shield-halved{% endif %} text-2xl text-[var(--color-accent-pink)] mt-0.5"></i>
