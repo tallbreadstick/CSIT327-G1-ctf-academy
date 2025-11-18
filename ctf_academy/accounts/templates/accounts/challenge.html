@@ -7,9 +7,8 @@
 {% tailwind_css %}
 
 <link rel="stylesheet" href="{% static 'accounts/css/challenge.css' %}">
-<script defer src="{% static 'accounts/js/challenge.js' %}"></script>
 <script defer src="{% static 'accounts/js/favorites.js' %}"></script>
-
+<!-- challenge.js is loaded at end of body so it can attach to DOM elements created below -->
 </head>
 
 <body id="desktop-body"
@@ -24,9 +23,11 @@
         Read-only mode: interactions may be disabled.
     </div>
     {% endif %}
-    <!-- Favorite toggle floating button -->
+
+    <!-- NOTE: DWM will inject windows here -->
+    <!-- Floating per-challenge controls (favorite) still present and anchored to desktop-area -->
     <button
-        class="absolute top-4 right-4 p-1 rounded bg-black/40 hover:bg-black/60"
+        class="absolute top-4 right-4 p-1 rounded bg-black/40 hover:bg-black/60 z-50"
         title="Toggle favorite"
         aria-label="Toggle favorite"
         aria-pressed="{{ is_favorite|yesno:'true,false' }}"
@@ -36,18 +37,9 @@
         data-favorited="{{ is_favorite|yesno:'1,0' }}">
         <i class="{% if is_favorite %}fas text-yellow-400{% else %}far text-gray-300{% endif %} fa-star text-2xl"></i>
     </button>
-    <c-text 
-        editor_id="welcome-editor" 
-        editor_title="Welcome.txt"
-        content="{{ initial_text_content }}">
-    </c-text>
-    {% if not readonly %}
-    <c-terminal
-        terminal_id="terminal-default"
-        terminal_title="Terminal"
-        default_open="true">
-    </c-terminal>
-    {% endif %}
+
+    <!-- desktop windows container (windows appended inside here by DWM) -->
+    <div id="windows-root" class="w-full h-full relative"></div>
 </div>
 
 <!-- ==============================
@@ -66,10 +58,11 @@
         <button class="taskbar-icon appgrid-button">⋮⋮⋮</button>
     </div>
     <div class="taskbar-center">
-        <button class="taskbar-icon" onclick="openWindow('notes-window')">📄</button>
-        <button class="taskbar-icon">🖥️</button>
-        <button class="taskbar-icon">🌐</button>
-        <button class="taskbar-icon">📁</button>
+        <!-- data-app values used by DWM to spawn app windows -->
+        <button class="taskbar-icon" data-app="text" title="Open Text (Notes)">📄</button>
+        <button class="taskbar-icon" data-app="terminal" title="Open Terminal">🖥️</button>
+        <button class="taskbar-icon" data-app="browser" title="Open Browser (placeholder)">🌐</button>
+        <button class="taskbar-icon" data-app="files" title="Open Files (placeholder)">📁</button>
     </div>
     <div class="taskbar-right">
         <span id="clock" class="clock-text">00:00</span>
@@ -77,7 +70,7 @@
 </div>
 
 <!-- ==============================
-     LOADING SCREEN
+     LOADING SCREEN (unchanged)
      ============================== -->
 <div id="loading-screen" class="fixed inset-0 z-50 flex flex-col items-center justify-center bg-black text-white text-2xl font-bold transition-opacity duration-500">
     <div class="animate-pulse mb-6" id="loading-message">Loading your challenge...</div>
@@ -85,77 +78,23 @@
 </div>
 
 <!-- ==============================
-     FULLSCREEN PROMPT
+     FULLSCREEN PROMPT (unchanged)
      ============================== -->
 <div id="fullscreen-prompt" 
      class="fixed inset-0 z-50 flex items-center justify-center bg-black text-white text-2xl font-bold cursor-pointer transition-opacity duration-500 opacity-0 pointer-events-none">
     Click anywhere to continue...
 </div>
 
+<!-- Expose initial text content to JS safely -->
 <script>
-document.addEventListener("DOMContentLoaded", () => {
-    const loading = document.getElementById("loading-screen");
-    const fullscreenPrompt = document.getElementById("fullscreen-prompt");
-    const loadingExtra = document.getElementById("loading-extra");
-
-    // Animate loading messages
-    const extraMessages = [
-        "Loading modules...",
-        "Fetching challenge data...",
-        "Preparing your desktop...",
-        "Almost ready..."
-    ];
-    let msgIndex = 0;
-    const msgInterval = setInterval(() => {
-        if (msgIndex < extraMessages.length) {
-            loadingExtra.textContent = extraMessages[msgIndex];
-            msgIndex++;
-        } else {
-            clearInterval(msgInterval);
-        }
-    }, 800);
-
-    // 1️⃣ Keep loading screen visible for 4 seconds
-    setTimeout(() => {
-        // 2️⃣ Fade out loading screen
-        if (loading) {
-            loading.classList.add("opacity-0", "pointer-events-none");
-            setTimeout(() => loading.remove(), 500);
-        }
-
-        // 3️⃣ Type editor content after loading fade
-        const editor = document.querySelector("#welcome-editor textarea");
-        if (editor && editor.textContent) {
-            const text = editor.textContent;
-            editor.value = "";
-            let i = 0;
-            const interval = setInterval(() => {
-                editor.value += text[i];
-                i++;
-                if (i >= text.length) clearInterval(interval);
-            }, 15);
-        }
-
-        // 4️⃣ Show fullscreen prompt AFTER loading screen completely disappears
-        setTimeout(() => {
-            fullscreenPrompt.classList.remove("opacity-0", "pointer-events-none");
-            fullscreenPrompt.classList.add("opacity-100", "pointer-events-auto");
-        }, 500); // 0.5s fade buffer
-
-    }, 4000); // 4s loading duration
-
-    // 5️⃣ Fullscreen trigger on click
-    fullscreenPrompt.addEventListener("click", () => {
-        const el = document.documentElement;
-        if (el.requestFullscreen) el.requestFullscreen();
-        else if (el.webkitRequestFullscreen) el.webkitRequestFullscreen();
-        else if (el.msRequestFullscreen) el.msRequestFullscreen();
-
-        fullscreenPrompt.classList.add("opacity-0", "pointer-events-none");
-        setTimeout(() => fullscreenPrompt.remove(), 500);
-    });
-});
+    const INITIAL_TEXT = "{{ initial_text_content|default:''|escapejs }}";
+    const IS_READONLY = {{ readonly|yesno:'true,false' }};
 </script>
 
+<!-- load DWM + app logic (deferred to end of body) -->
+<script defer src="{% static 'accounts/js/challenge.js' %}"></script>
+
+<!-- script to enable fullscreen stuff -->
+<script defer src="{% static 'accounts/js/fullscreen.js' %}"></script>
 </body>
 </html>
