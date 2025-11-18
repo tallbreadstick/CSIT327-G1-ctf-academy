@@ -355,7 +355,57 @@ def challenges_page(request):
 
 @login_required
 def leaderboards_page(request):
-    return render(request, "accounts/leaderboards.html")
+    """
+    Dynamic leaderboards backed by the existing database.
+    There is no scoring system yet, so everyone is shown with 0 points.
+    Ordering falls back to most recent users first so the page looks alive.
+    """
+    # Pull active users from DB (Supabase Postgres via Django settings)
+    users_qs = User.objects.filter(is_active=True).order_by("-date_joined")
+
+    leaders = []
+    for u in users_qs:
+        # Try to grab an inline image from profile if present
+        image_uri = None
+        try:
+            if hasattr(u, "profile"):
+                img_b64 = u.profile.get_base64_image()
+                if img_b64:
+                    image_uri = f"data:image/jpeg;base64,{img_b64}"
+        except Exception:
+            image_uri = None
+
+        leaders.append({
+            "id": u.id,
+            "username": u.username,
+            "points": 0,            # placeholder until scoring lands
+            "challenges": 0,        # placeholder
+            "streak": 0,            # placeholder
+            "image_uri": image_uri,
+            "date_joined": u.date_joined,
+        })
+
+    # Top 3 for podium, rest for table
+    top = leaders[:3]
+    rest = leaders[3:]
+    start_rank = len(top) + 1
+
+    # Current user's rank (1-based) if present in list
+    current_user_rank = None
+    for idx, row in enumerate(leaders, start=1):
+        if row["id"] == request.user.id:
+            current_user_rank = idx
+            break
+
+    context = {
+        "top": top,
+        "leaders": rest,
+        "all_leaders": leaders,  # optional full list if template needs it
+        "current_user_rank": current_user_rank,
+        "start_rank": start_rank,
+    }
+
+    return render(request, "accounts/leaderboards.html", context)
 
 @login_required
 def challenge_detail(request, slug):
