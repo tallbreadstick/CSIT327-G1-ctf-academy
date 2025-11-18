@@ -6,69 +6,137 @@
 <title>CTF Desktop</title>
 {% tailwind_css %}
 
-<!-- External CSS -->
 <link rel="stylesheet" href="{% static 'accounts/css/challenge.css' %}">
-<!-- External JS -->
 <script defer src="{% static 'accounts/js/challenge.js' %}"></script>
 
 </head>
 
-<body class="m-0 p-0 h-screen w-screen font-mono relative"
+<body id="desktop-body"
+      class="m-0 p-0 h-screen w-screen font-mono relative overflow-hidden"
       style="background: url('{% static 'accounts/images/desktop_wallpaper.png' %}') no-repeat center center fixed; background-size: cover;">
 
 <!-- ==============================
      DESKTOP WORKSPACE
      ============================== -->
 <div class="desktop-area">
-
-    <!-- EXAMPLE WINDOW (Text Editor / Notes) -->
     <c-text 
         editor_id="welcome-editor" 
         editor_title="Welcome.txt"
         content="{{ initial_text_content }}">
     </c-text>
-
+    <c-terminal
+        terminal_id="terminal-default"
+        terminal_title="Terminal"
+        default_open="true">
+    </c-terminal>
 </div>
 
 <!-- ==============================
      TASKBAR
      ============================== -->
 <div class="taskbar">
-    
-    <!-- LEFT SECTION: POWER + APP GRID -->
     <div class="taskbar-left">
-        
-        <!-- Power Button -->
         <div class="power-wrapper">
             <button id="power-btn" class="taskbar-icon power-button">⏻</button>
-
-            <div id="power-dropdown" class="dropdown-panel hidden">
-                <button onclick="window.location.href='{% url 'logout_page' %}'">Log Out</button>
-                <button onclick="window.location.href='{% url 'challenges_page' %}'">Power Off</button>
-                <button onclick="alert('Restart feature to be implemented')">Restart</button>
+            <div id="power-dropdown" class="dropdown-panel dropdown-hidden">
+                <button data-url="{% url 'logout_page' %}">Log Out</button>
+                <button data-url="{% url 'challenges_page' %}">Power Off</button>
+                <button data-action="restart">Restart</button>
             </div>
         </div>
-
-        <!-- App Drawer Button -->
-        <button class="taskbar-icon appgrid-button">
-            ⋮⋮⋮
-        </button>
+        <button class="taskbar-icon appgrid-button">⋮⋮⋮</button>
     </div>
-
-    <!-- CENTER SECTION: APP ICONS -->
     <div class="taskbar-center">
         <button class="taskbar-icon" onclick="openWindow('notes-window')">📄</button>
         <button class="taskbar-icon">🖥️</button>
         <button class="taskbar-icon">🌐</button>
         <button class="taskbar-icon">📁</button>
     </div>
-
-    <!-- RIGHT SECTION: CLOCK -->
     <div class="taskbar-right">
         <span id="clock" class="clock-text">00:00</span>
     </div>
-
 </div>
+
+<!-- ==============================
+     LOADING SCREEN
+     ============================== -->
+<div id="loading-screen" class="fixed inset-0 z-50 flex flex-col items-center justify-center bg-black text-white text-2xl font-bold transition-opacity duration-500">
+    <div class="animate-pulse mb-6" id="loading-message">Loading your challenge...</div>
+    <div id="loading-extra" class="text-sm text-gray-400 opacity-50">Initializing environment...</div>
+</div>
+
+<!-- ==============================
+     FULLSCREEN PROMPT
+     ============================== -->
+<div id="fullscreen-prompt" 
+     class="fixed inset-0 z-50 flex items-center justify-center bg-black text-white text-2xl font-bold cursor-pointer transition-opacity duration-500 opacity-0 pointer-events-none">
+    Click anywhere to continue...
+</div>
+
+<script>
+document.addEventListener("DOMContentLoaded", () => {
+    const loading = document.getElementById("loading-screen");
+    const fullscreenPrompt = document.getElementById("fullscreen-prompt");
+    const loadingExtra = document.getElementById("loading-extra");
+
+    // Animate loading messages
+    const extraMessages = [
+        "Loading modules...",
+        "Fetching challenge data...",
+        "Preparing your desktop...",
+        "Almost ready..."
+    ];
+    let msgIndex = 0;
+    const msgInterval = setInterval(() => {
+        if (msgIndex < extraMessages.length) {
+            loadingExtra.textContent = extraMessages[msgIndex];
+            msgIndex++;
+        } else {
+            clearInterval(msgInterval);
+        }
+    }, 800);
+
+    // 1️⃣ Keep loading screen visible for 4 seconds
+    setTimeout(() => {
+        // 2️⃣ Fade out loading screen
+        if (loading) {
+            loading.classList.add("opacity-0", "pointer-events-none");
+            setTimeout(() => loading.remove(), 500);
+        }
+
+        // 3️⃣ Type editor content after loading fade
+        const editor = document.querySelector("#welcome-editor textarea");
+        if (editor && editor.textContent) {
+            const text = editor.textContent;
+            editor.value = "";
+            let i = 0;
+            const interval = setInterval(() => {
+                editor.value += text[i];
+                i++;
+                if (i >= text.length) clearInterval(interval);
+            }, 15);
+        }
+
+        // 4️⃣ Show fullscreen prompt AFTER loading screen completely disappears
+        setTimeout(() => {
+            fullscreenPrompt.classList.remove("opacity-0", "pointer-events-none");
+            fullscreenPrompt.classList.add("opacity-100", "pointer-events-auto");
+        }, 500); // 0.5s fade buffer
+
+    }, 4000); // 4s loading duration
+
+    // 5️⃣ Fullscreen trigger on click
+    fullscreenPrompt.addEventListener("click", () => {
+        const el = document.documentElement;
+        if (el.requestFullscreen) el.requestFullscreen();
+        else if (el.webkitRequestFullscreen) el.webkitRequestFullscreen();
+        else if (el.msRequestFullscreen) el.msRequestFullscreen();
+
+        fullscreenPrompt.classList.add("opacity-0", "pointer-events-none");
+        setTimeout(() => fullscreenPrompt.remove(), 500);
+    });
+});
+</script>
 
 </body>
 </html>

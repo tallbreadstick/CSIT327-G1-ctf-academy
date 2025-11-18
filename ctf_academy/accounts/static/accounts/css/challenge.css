@@ -116,6 +116,10 @@
         padding: 8px;
         box-sizing: border-box;
     }
+
+    .terminal-output {
+        opacity: 0;
+    }
 }
 
 /* Resizer */
@@ -186,8 +190,8 @@
 /* Dropdown Menu */
 .dropdown-panel {
     position: absolute;
+    display: block;
     left: 0;
-    top: 50px;
 
     background: var(--dropdown-bg);
     border: 1px solid rgba(255,255,255,0.12);
@@ -196,6 +200,10 @@
     width: 140px;
     padding: 6px 0;
     z-index: 999;
+}
+
+.dropdown-panel.dropdown-hidden {
+    display: none;
 }
 
 .dropdown-panel button {
@@ -229,4 +237,16 @@
 }
 ::-webkit-scrollbar-thumb:hover {
     background: rgba(255,255,255,0.25);
+}
+
+/* ==========================================
+   LOADING SCREEN
+   ========================================== */
+#loading-screen {
+    opacity: 1;
+    transition: opacity 0.5s ease;
+}
+#loading-screen.opacity-0 {
+    opacity: 0;
+    pointer-events: none;
 }

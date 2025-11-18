@@ -74,14 +74,13 @@ function makeDraggableAndResizable(winId) {
 
     /* DRAG */
     header.addEventListener("mousedown", e => {
-        // Ignore clicks on control buttons
         if (e.target.closest(".win-btn")) return;
 
         dragging = true;
         offsetX = e.clientX - win.offsetLeft;
         offsetY = e.clientY - win.offsetTop;
 
-        e.preventDefault(); // prevent text selection
+        e.preventDefault();
     });
 
     /* RESIZE */
@@ -137,17 +136,56 @@ document.addEventListener("DOMContentLoaded", () => {
 });
 
 /* =======================================================
-   POWER MENU
+   POWER MENU FIX
    ======================================================= */
-function togglePowerDropdown() {
-    document.getElementById("power-dropdown").classList.toggle("hidden");
-}
+document.addEventListener("DOMContentLoaded", () => {
+    const powerBtn = document.getElementById("power-btn");
+    const powerDropdown = document.getElementById("power-dropdown");
 
-document.addEventListener("click", e => {
-    const dropdown = document.getElementById("power-dropdown");
-    const button = document.getElementById("power-btn");
+    if (!powerBtn || !powerDropdown) return; // Safety check
 
-    if (!dropdown.contains(e.target) && !button.contains(e.target)) {
-        dropdown.classList.add("hidden");
-    }
+    // Toggle dropdown visibility
+    powerBtn.addEventListener("click", e => {
+        e.stopPropagation(); // prevent document click from closing it immediately
+        powerDropdown.classList.toggle("dropdown-hidden");
+
+        // Get button position
+        const rect = powerBtn.getBoundingClientRect();
+
+        // Position dropdown above the button (taskbar is at bottom)
+        const dropdownHeight = powerDropdown.offsetHeight;
+        const margin = 6;
+
+        // The button's bottom coordinate
+        const btnBottom = rect.bottom;
+
+        // Since taskbar is at bottom, calculate from viewport height
+        powerDropdown.style.top = `${window.innerHeight - rect.bottom - dropdownHeight - margin}px`;
+
+        // Align left with button
+        powerDropdown.style.left = `${rect.left}px`;
+    });
+
+    // Close dropdown if click outside
+    document.addEventListener("click", e => {
+        if (!powerDropdown.contains(e.target) && !powerBtn.contains(e.target)) {
+            powerDropdown.classList.add("dropdown-hidden");
+        }
+    });
+
+    // Button actions
+    powerDropdown.querySelectorAll("button").forEach(btn => {
+        btn.addEventListener("click", () => {
+            const url = btn.getAttribute("data-url");
+            const action = btn.getAttribute("data-action");
+
+            if (url) {
+                window.location.href = url; // navigate to URL
+            } else if (action === "restart") {
+                alert("Restart feature to be implemented");
+            }
+
+            powerDropdown.classList.add("dropdown-hidden");
+        });
+    });
 });

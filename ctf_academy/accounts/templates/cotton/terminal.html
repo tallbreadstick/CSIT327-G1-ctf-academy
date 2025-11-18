@@ -1,11 +1,57 @@
-<div class="bg-black text-green-400 font-mono p-3 rounded-lg h-64 overflow-y-auto">
-    <div class="flex justify-between items-center mb-2">
-        <span class="text-xs text-gray-400">CTF Terminal</span>
-        <button class="text-xs text-gray-400 hover:text-green-300">×</button>
-    </div>
-    <div id="terminal-output" class="text-sm">
-        <p>$ connecting to host...</p>
-        <p>$ exploit loaded</p>
-        <p class="text-yellow-300">$ awaiting input</p>
-    </div>
-</div>
+<c-window
+    id="{{ terminal_id }}"
+    title="{{ terminal_title|default:'Terminal' }}"
+    show_controls="true"
+    body_content='
+        <div id="{{ terminal_id }}-output" class="terminal-output"
+             style="font-family: monospace; font-size: 14px; color: #dcdcdc; height: calc(100% - 30px); overflow-y: auto; padding: 6px; background: transparent; border-radius: 4px;">
+            <span id="{{ terminal_id }}-prompt">$ </span>
+        </div>
+        <input id="{{ terminal_id }}-input" class="terminal-input"
+               type="text"
+               style="width: 100%; padding: 6px; font-family: monospace; font-size: 14px; color: #dcdcdc; background: transparent; border: none; outline: none;"
+               placeholder="Type a command..."
+               autocomplete="off" />
+    '
+>
+</c-window>
+
+<script>
+document.addEventListener("DOMContentLoaded", () => {
+    const input = document.getElementById("{{ terminal_id }}-input");
+    const output = document.getElementById("{{ terminal_id }}-output");
+
+    if (!input || !output) return;
+
+    input.addEventListener("keydown", e => {
+        if (e.key === "Enter") {
+            const cmd = input.value.trim();
+            if (!cmd) return;
+
+            const line = document.createElement("div");
+            line.textContent = `$ ${cmd}`;
+            output.appendChild(line);
+
+            const response = document.createElement("div");
+            switch(cmd.toLowerCase()) {
+                case "help":
+                    response.textContent = "Available commands: help, clear, echo [text]";
+                    break;
+                case "clear":
+                    output.innerHTML = '<span id="{{ terminal_id }}-prompt">$ </span>';
+                    input.value = "";
+                    return;
+                default:
+                    if(cmd.startsWith("echo ")) {
+                        response.textContent = cmd.slice(5);
+                    } else {
+                        response.textContent = `${cmd}: command not found`;
+                    }
+            }
+            output.appendChild(response);
+            output.scrollTop = output.scrollHeight;
+            input.value = "";
+        }
+    });
+});
+</script>
