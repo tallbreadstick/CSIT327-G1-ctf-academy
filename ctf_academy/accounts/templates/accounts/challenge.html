@@ -8,6 +8,7 @@
 
 <link rel="stylesheet" href="{% static 'accounts/css/challenge.css' %}">
 <script defer src="{% static 'accounts/js/challenge.js' %}"></script>
+<script defer src="{% static 'accounts/js/favorites.js' %}"></script>
 
 </head>
 
@@ -19,6 +20,18 @@
      DESKTOP WORKSPACE
      ============================== -->
 <div class="desktop-area">
+    <!-- Favorite toggle floating button -->
+    <button
+        class="absolute top-4 right-4 p-1 rounded bg-black/40 hover:bg-black/60"
+        title="Toggle favorite"
+        aria-label="Toggle favorite"
+        aria-pressed="{{ is_favorite|yesno:'true,false' }}"
+        data-action="toggle-favorite"
+        data-toggle-url="{% url 'toggle_favorite' challenge.id %}"
+        data-challenge-id="{{ challenge.id }}"
+        data-favorited="{{ is_favorite|yesno:'1,0' }}">
+        <i class="{% if is_favorite %}fas text-yellow-400{% else %}far text-gray-300{% endif %} fa-star text-2xl"></i>
+    </button>
     <c-text 
         editor_id="welcome-editor" 
         editor_title="Welcome.txt"
