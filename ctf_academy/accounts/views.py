@@ -12,6 +12,9 @@ from django.contrib.auth.decorators import login_required, user_passes_test
 from .models import Challenge, Category, UserProfile, Favorite, ChallengeProgress
 from django.db.models import Sum, Q, Case, When, IntegerField
 from django.http import JsonResponse, HttpResponseBadRequest
+import traceback
+from django.views.decorators.csrf import csrf_exempt
+from django.utils import timezone
 
 # --- ADDED IMPORTS FOR JWT AND API PROTECTION ---
 from .serializers import MyTokenObtainPairSerializer
@@ -240,6 +243,7 @@ def challenges_page(request):
     category_slug = request.GET.get("category", "")
     difficulty = request.GET.get("difficulty", "")
     sort_by = request.GET.get("sort_by", "id")  # default sort by id
+    status_filter = request.GET.get("status", "")  # '', 'completed', 'incomplete', 'favorites'
 
     if category_slug:
         qs = qs.filter(category__slug=category_slug)
@@ -275,7 +279,23 @@ def challenges_page(request):
             )
         ).order_by("difficulty_order")
 
-    # --- Stats: totals & points ---
+    # --- Apply status filter BEFORE computing stats (since user expects counts for filtered set) ---
+    if status_filter == "completed":
+        completed_ids = ChallengeProgress.objects.filter(
+            user=user, status=ChallengeProgress.Status.COMPLETED
+        ).values_list("challenge_id", flat=True)
+        qs = qs.filter(id__in=completed_ids)
+    elif status_filter == "incomplete":
+        # Incomplete now means: actively in progress only
+        inprog_ids = ChallengeProgress.objects.filter(
+            user=user, status=ChallengeProgress.Status.IN_PROGRESS
+        ).values_list("challenge_id", flat=True)
+        qs = qs.filter(id__in=inprog_ids)
+    elif status_filter == "favorites":
+        fav_ids = Favorite.objects.filter(user=user).values_list("challenge_id", flat=True)
+        qs = qs.filter(id__in=fav_ids)
+
+    # --- Stats: totals & points for current filtered queryset ---
     total_count = qs.count()
     points_total = qs.aggregate(total_points=Sum("points"))["total_points"] or 0
 
@@ -298,16 +318,15 @@ def challenges_page(request):
                 except Exception:
                     ch.tools_count = 0
         else:
-            from .models import ChallengeProgress
             progress_qs = ChallengeProgress.objects.filter(user=user, challenge__in=qs)
-            completed_count = progress_qs.filter(status="completed").count()
-            in_progress_count = progress_qs.filter(status="in_progress").count()
-            points_earned = progress_qs.filter(status="completed").aggregate(points=Sum("challenge__points"))["points"] or 0
+            completed_count = progress_qs.filter(status=ChallengeProgress.Status.COMPLETED).count()
+            in_progress_count = progress_qs.filter(status=ChallengeProgress.Status.IN_PROGRESS).count()
+            points_earned = progress_qs.filter(status=ChallengeProgress.Status.COMPLETED).aggregate(points=Sum("challenge__points"))["points"] or 0
 
             challenges = list(qs)
             prog_map = {p.challenge_id: p.status for p in progress_qs}
             for ch in challenges:
-                ch.is_completed = prog_map.get(ch.id) == "completed"
+                ch.is_completed = prog_map.get(ch.id) == ChallengeProgress.Status.COMPLETED
                 ch.tools_count = len(ch.topology.get("tools", [])) if ch.topology else 0
 
     except Exception:
@@ -347,6 +366,7 @@ def challenges_page(request):
         "selected_category": category_slug,
         "selected_difficulty": difficulty,
         "selected_sort": sort_by,
+        "selected_status": status_filter,
         "q": q,
         "stats": stats,
     }
@@ -362,11 +382,19 @@ def leaderboards_page(request):
     Ordering falls back to most recent users first so the page looks alive.
     """
     # Pull active users from DB (Supabase Postgres via Django settings)
-    users_qs = User.objects.filter(is_active=True).order_by("-date_joined")
+    users_qs = User.objects.filter(is_active=True).order_by("username")
+
+    # Preload progress for all users to compute points from completed challenges
+    from collections import defaultdict
+    progress_rows = ChallengeProgress.objects.filter(status=ChallengeProgress.Status.COMPLETED)
+    points_map = defaultdict(int)
+    completed_count_map = defaultdict(int)
+    for p in progress_rows.select_related("challenge"):
+        points_map[p.user_id] += p.challenge.points
+        completed_count_map[p.user_id] += 1
 
     leaders = []
     for u in users_qs:
-        # Try to grab an inline image from profile if present
         image_uri = None
         try:
             if hasattr(u, "profile"):
@@ -379,14 +407,15 @@ def leaderboards_page(request):
         leaders.append({
             "id": u.id,
             "username": u.username,
-            "points": 0,            # placeholder until scoring lands
-            "challenges": 0,        # placeholder
-            "streak": 0,            # placeholder
+            "points": points_map.get(u.id, 0),
+            "challenges": completed_count_map.get(u.id, 0),
+            "streak": 0,  # streak logic TBD
             "image_uri": image_uri,
             "date_joined": u.date_joined,
         })
 
-    # Top 3 for podium, rest for table
+    # Order leaders by points desc then username
+    leaders.sort(key=lambda r: (-r["points"], r["username"]))
     top = leaders[:3]
     rest = leaders[3:]
     start_rank = len(top) + 1
@@ -423,6 +452,16 @@ Difficulty: {challenge.difficulty}
 Description:
 {challenge.description or 'No description provided.'}
 """
+    # Inject temporary gameplay command instructions for Ring Around The Rosie
+    # Use slug for robustness instead of title text match.
+    if challenge.slug == "ring-around-the-rosie":
+        initial_content += """
+
+Commands (temporary prototype):
+    /inprogress   -> mark this challenge as In Progress
+    /complete     -> mark this challenge as Completed and award points (one-time)
+Type commands in the Terminal window. Use 'help' for generic terminal help.
+"""
     # Mark safe for rendering inside <textarea>
     from django.utils.safestring import mark_safe
     initial_content = mark_safe(initial_content)
@@ -457,6 +496,23 @@ Description:
     except Exception:
         pass
 
+    # Fallback: ensure progress row exists & status is IN_PROGRESS when page is opened (non-readonly)
+    if request.GET.get("readonly") != "1":
+        try:
+            if progress is None:
+                progress, _ = ChallengeProgress.objects.get_or_create(
+                    user=request.user, challenge=challenge,
+                    defaults={"status": ChallengeProgress.Status.IN_PROGRESS}
+                )
+            if progress.status in [ChallengeProgress.Status.ATTEMPTED, ChallengeProgress.Status.UNSOLVED]:
+                ChallengeProgress.objects.filter(pk=progress.pk).update(
+                    status=ChallengeProgress.Status.IN_PROGRESS,
+                    updated_at=timezone.now()
+                )
+        except Exception:
+            # Silent fallback; we surface errors only on explicit POST actions
+            pass
+
     readonly = request.GET.get("readonly") == "1"
 
     return render(request, "accounts/challenge.html", {
@@ -468,6 +524,7 @@ Description:
         "last_state": last_state,
         "unsaved_warning": unsaved_warning,
         "save_progress_url": reverse('save_progress', args=[challenge.id]),
+        "update_status_url": reverse('update_challenge_status', args=[challenge.id]),
     })
 
 
@@ -499,6 +556,7 @@ def favorites_page(request):
 
 
 @login_required
+@csrf_exempt  # Prototype: remove when front-end CSRF stable
 def save_progress(request, challenge_id: int):
     """Persist user's last_state for a challenge and mark save as successful.
     Expected JSON body: { "last_state": <any json-serializable> }
@@ -517,14 +575,61 @@ def save_progress(request, challenge_id: int):
             user=request.user, challenge=challenge,
             defaults={"status": ChallengeProgress.Status.IN_PROGRESS}
         )
+        # Apply updates
         prog.last_state = last_state
         prog.last_saved_ok = True
         if prog.status == ChallengeProgress.Status.ATTEMPTED:
             prog.status = ChallengeProgress.Status.IN_PROGRESS
-        prog.save(update_fields=["last_state", "last_saved_ok", "status", "updated_at"])
+        prog.save()  # full save (avoid update_fields mismatch with DB schema)
         return JsonResponse({"ok": True})
-    except Exception:
-        return JsonResponse({"ok": False}, status=500)
+    except Exception as e:
+        tb = traceback.format_exc()
+        print(tb)
+        return JsonResponse({"ok": False, "message": f"Save failed: {type(e).__name__}: {e}", "debug": tb}, status=500)
+
+
+@login_required
+@csrf_exempt  # Prototype: remove when front-end CSRF stable
+def update_challenge_status(request, challenge_id: int):
+    """Update a user's ChallengeProgress status via simple POST.
+    Accepts form-encoded or JSON body with 'status'. Supported values: in_progress, completed.
+    Returns JSON: { ok, status, points_awarded?, message }
+    """
+    if request.method != "POST":
+        return HttpResponseBadRequest("POST required")
+    challenge = get_object_or_404(Challenge, id=challenge_id)
+    # Extract status from POST or JSON
+    status_val = request.POST.get("status")
+    if not status_val:
+        import json
+        try:
+            payload = json.loads(request.body.decode("utf-8") or "{}")
+            status_val = payload.get("status")
+        except Exception:
+            status_val = None
+    if status_val not in ["in_progress", "completed"]:
+        return JsonResponse({"ok": False, "message": "Invalid status."}, status=400)
+    try:
+        prog, _ = ChallengeProgress.objects.get_or_create(
+            user=request.user, challenge=challenge,
+            defaults={"status": ChallengeProgress.Status.ATTEMPTED}
+        )
+        if status_val == "in_progress":
+            if prog.status == ChallengeProgress.Status.COMPLETED:
+                return JsonResponse({"ok": True, "status": prog.status, "message": "Already completed. Cannot revert to In Progress."})
+            if prog.status != ChallengeProgress.Status.IN_PROGRESS:
+                prog.status = ChallengeProgress.Status.IN_PROGRESS
+                prog.save()
+            return JsonResponse({"ok": True, "status": prog.status, "message": "Marked In Progress."})
+        # completed path
+        if prog.status == ChallengeProgress.Status.COMPLETED:
+            return JsonResponse({"ok": True, "status": prog.status, "message": "Already completed. Points previously awarded."})
+        prog.mark_completed()
+        return JsonResponse({"ok": True, "status": prog.status, "points_awarded": challenge.points, "message": f"Congratulations! Challenge completed. +{challenge.points} points."})
+    except Exception as e:
+        tb = traceback.format_exc()
+        print(tb)
+        return JsonResponse({"ok": False, "message": f"Server error ({type(e).__name__}): {e}", "debug": tb}, status=500)
 
 
 @login_required

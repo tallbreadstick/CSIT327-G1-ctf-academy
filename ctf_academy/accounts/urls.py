@@ -19,6 +19,7 @@ from .views import (
     save_progress,
     toggle_favorite,
     favorites_page,
+    update_challenge_status,
 )
 # --- ADD THESE IMPORTS ---
 from rest_framework_simplejwt.views import (
@@ -46,6 +47,7 @@ urlpatterns = [
     path("challenges/completed/", completed_challenges_page, name="completed_challenges_page"),
     path("challenges/incomplete/", incomplete_challenges_page, name="incomplete_challenges_page"),
     path("challenges/progress/save/<int:challenge_id>/", save_progress, name="save_progress"),
+    path("challenges/status/update/<int:challenge_id>/", update_challenge_status, name="update_challenge_status"),
     path("challenges/<slug:slug>/", challenge_detail, name="challenge_detail"),
     path("favorites/", favorites_page, name="favorites_page"),
     path("favorites/toggle/<int:challenge_id>/", toggle_favorite, name="toggle_favorite"),

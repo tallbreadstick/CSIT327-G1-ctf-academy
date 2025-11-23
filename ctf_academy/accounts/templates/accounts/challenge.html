@@ -14,6 +14,9 @@
 <body id="desktop-body"
     class="m-0 p-0 h-screen w-screen font-mono relative overflow-hidden">
 
+<!-- Hidden CSRF form to ensure csrftoken cookie is set for JS fetch calls -->
+<form method="post" style="display:none;">{% csrf_token %}</form>
+
 <!-- ==============================
      DESKTOP WORKSPACE
      ============================== -->
@@ -88,7 +91,10 @@
 <!-- Expose initial text content to JS safely -->
 <script>
     const INITIAL_TEXT = "{{ initial_text_content|default:''|escapejs }}";
-    const IS_READONLY = {{ readonly|yesno:'true,false' }};
+    const IS_READONLY = "{{ readonly|yesno:'true,false' }}" === "true";
+    const UPDATE_STATUS_URL = "{{ update_status_url|escapejs }}";
+    // Expose CSRF token directly if needed by JS (fallback if cookie missing)
+    window.CSRF_TOKEN = '{{ csrf_token }}';
 </script>
 
 <!-- load DWM + app logic (deferred to end of body) -->

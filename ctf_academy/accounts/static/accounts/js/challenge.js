@@ -244,21 +244,135 @@ const DWM = (function() {
         const input = document.getElementById(`${winId}-input`);
         if (!out || !input) return;
 
+        // Utility: append a line (supports html) and auto-scroll
+        function appendLine(html, cls) {
+            const line = document.createElement('div');
+            if (cls) line.className = cls;
+            line.innerHTML = html;
+            out.appendChild(line);
+            out.scrollTop = out.scrollHeight;
+            return line;
+        }
+
+        // Utility: typing animation for immersive feel
+        async function typeOut(el, text, delay=12) {
+            el.textContent = '';
+            for (let i=0;i<text.length;i++) {
+                el.textContent += text[i];
+                if (i % 3 === 0) await new Promise(r=>setTimeout(r, delay));
+            }
+        }
+
+        // Spinner factory
+        function makeSpinner(text='working') {
+            const spin = document.createElement('div');
+            spin.className = 'term-spinner';
+            spin.innerHTML = `<span style="color:#888">${text} <span class="pulse-dots">...</span></span>`;
+            let dots = 0;
+            const interval = setInterval(()=>{
+                dots = (dots+1)%4;
+                spin.querySelector('.pulse-dots').textContent = '.'.repeat(dots) || '.';
+            }, 300);
+            spin._stop = ()=>clearInterval(interval);
+            return spin;
+        }
+
+        // Basic styles injection (once) for terminal feedback if not present
+        if (!document.getElementById('terminal-extra-styles')) {
+            const style = document.createElement('style');
+            style.id = 'terminal-extra-styles';
+            style.textContent = `
+                .term-success { color: #38c172; }
+                .term-error { color: #e3342f; }
+                .term-info { color: #6cb2eb; }
+                .term-spinner { font-family: monospace; }
+            `;
+            document.head.appendChild(style);
+        }
+
         input.addEventListener('keydown', e => {
             if (e.key === 'Enter') {
                 const cmd = input.value.trim();
                 if (!cmd) return;
-                const line = document.createElement('div');
-                line.textContent = `$ ${cmd}`;
-                out.appendChild(line);
+                appendLine(`<span style="color:#888">$</span> <span>${cmd.replace(/</g,'&lt;')}</span>`);
 
+                // Prompt immediate feedback for known commands
+                let responseClass = 'term-info';
                 const response = document.createElement('div');
-                if (cmd === 'help') response.textContent = 'Available commands: help, clear, echo [text]';
+                // Helper for prototype gameplay commands
+                async function postStatus(status){
+                    if (typeof UPDATE_STATUS_URL === 'undefined' || !UPDATE_STATUS_URL){
+                        return { ok:false, message:'Status endpoint unavailable.' };
+                    }
+                    function getCookie(name){
+                        const value = `; ${document.cookie}`;
+                        const parts = value.split(`; ${name}=`);
+                        if(parts.length === 2) return parts.pop().split(';').shift();
+                    }
+                    function getCsrfToken(){
+                        return getCookie('csrftoken') || (window.CSRF_TOKEN || '') || (document.querySelector('input[name=csrfmiddlewaretoken]')?.value || '');
+                    }
+                    try {
+                        const res = await fetch(UPDATE_STATUS_URL, {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'X-CSRFToken': getCsrfToken(),
+                                'X-Requested-With': 'XMLHttpRequest'
+                            },
+                            body: JSON.stringify({ status })
+                        });
+                        let data = {};
+                        try { data = await res.json(); } catch(e){ /* non-JSON */ }
+                        if(!res.ok || !data.ok){
+                            return { ok:false, message: (data.message || 'Failed to update status.') + ` (HTTP ${res.status})` };
+                        }
+                        if(data.points_awarded){
+                            return { ok:true, message: (data.message || 'Completed.') + ` Awarded: +${data.points_awarded}` };
+                        }
+                        return { ok:true, message: data.message || 'Status updated.' };
+                    }catch(err){
+                        return { ok:false, message:'Error contacting server.' };
+                    }
+                }
+
+                if (cmd === 'help') response.textContent = 'Available: help, clear, echo [text], /inprogress, /complete, /status';
                 else if (cmd === 'clear') {
                     out.innerHTML = `<span id="${winId}-output-prompt">$ </span>`;
                     input.value = '';
                     return;
                 } else if (cmd.startsWith('echo ')) response.textContent = cmd.slice(5);
+                else if (cmd === '/inprogress') {
+                    response.textContent = 'Requesting status: In Progress';
+                    const spinner = makeSpinner('updating');
+                    out.appendChild(spinner);
+                    postStatus('in_progress').then(resObj => {
+                        spinner._stop();
+                        spinner.remove();
+                        const follow = document.createElement('div');
+                        follow.className = resObj.ok ? 'term-success' : 'term-error';
+                        typeOut(follow, resObj.message);
+                        out.appendChild(follow);
+                        out.scrollTop = out.scrollHeight;
+                    });
+                }
+                else if (cmd === '/complete') {
+                    response.textContent = 'Submitting completion...';
+                    const spinner = makeSpinner('completing');
+                    out.appendChild(spinner);
+                    postStatus('completed').then(resObj => {
+                        spinner._stop();
+                        spinner.remove();
+                        const follow = document.createElement('div');
+                        follow.className = resObj.ok ? 'term-success' : 'term-error';
+                        typeOut(follow, resObj.message);
+                        out.appendChild(follow);
+                        out.scrollTop = out.scrollHeight;
+                    });
+                }
+                else if (cmd === '/status') {
+                    response.textContent = 'Status commands: /inprogress, /complete';
+                }
                 else response.textContent = `${cmd}: command not found`;
 
                 out.appendChild(response);
@@ -501,10 +615,11 @@ document.addEventListener("DOMContentLoaded", () => {
 
 document.addEventListener("challenge-ready", () => {
     // Spawn initial text document if provided
-    if (INITIAL_TEXT && INITIAL_TEXT.trim() !== "" && !IS_READONLY) {
-        DWM.spawnWindow("text", {
-            title: "Notes",
-            content: INITIAL_TEXT
-        });
+    if (INITIAL_TEXT && INITIAL_TEXT.trim() !== "") {
+        DWM.openWindow('text', { singleton: true, title: 'Welcome.txt', content: INITIAL_TEXT });
+        // Auto-open terminal for convenience
+        if (!IS_READONLY) {
+            DWM.openWindow('terminal', { singleton: true, title: 'Terminal' });
+        }
     }
 });
