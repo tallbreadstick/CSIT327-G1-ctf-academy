@@ -20,6 +20,8 @@ from .views import (
     toggle_favorite,
     favorites_page,
     update_challenge_status,
+    api_mark_inprogress,
+    api_mark_complete,
 )
 # --- ADD THESE IMPORTS ---
 from rest_framework_simplejwt.views import (
@@ -51,4 +53,7 @@ urlpatterns = [
     path("challenges/<slug:slug>/", challenge_detail, name="challenge_detail"),
     path("favorites/", favorites_page, name="favorites_page"),
     path("favorites/toggle/<int:challenge_id>/", toggle_favorite, name="toggle_favorite"),
+    # Lightweight command-style endpoints for terminal shortcuts
+    path("inprogress", api_mark_inprogress, name="api_inprogress"),
+    path("complete", api_mark_complete, name="api_complete"),
 ]

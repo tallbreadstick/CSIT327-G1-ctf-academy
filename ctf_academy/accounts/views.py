@@ -633,6 +633,82 @@ def update_challenge_status(request, challenge_id: int):
 
 
 @login_required
+@csrf_exempt
+def api_mark_inprogress(request):
+    """Endpoint /inprogress
+    POST body or form data must include 'slug' or 'id'. Marks challenge IN_PROGRESS.
+    Returns current status; does not award points.
+    """
+    if request.method != "POST":
+        return HttpResponseBadRequest("POST required")
+    slug = request.POST.get("slug")
+    ch_id = request.POST.get("id")
+    if not slug and not ch_id:
+        # Try JSON body
+        import json
+        try:
+            payload = json.loads(request.body.decode("utf-8") or "{}")
+        except Exception:
+            payload = {}
+        slug = payload.get("slug")
+        ch_id = payload.get("id")
+    try:
+        if slug:
+            challenge = get_object_or_404(Challenge, slug=slug)
+        else:
+            challenge = get_object_or_404(Challenge, id=int(ch_id))
+    except Exception:
+        return JsonResponse({"ok": False, "message": "Challenge not found."}, status=404)
+    prog, _ = ChallengeProgress.objects.get_or_create(
+        user=request.user, challenge=challenge,
+        defaults={"status": ChallengeProgress.Status.ATTEMPTED}
+    )
+    if prog.status == ChallengeProgress.Status.COMPLETED:
+        return JsonResponse({"ok": True, "status": prog.status, "message": "Already completed."})
+    if prog.status != ChallengeProgress.Status.IN_PROGRESS:
+        prog.status = ChallengeProgress.Status.IN_PROGRESS
+        prog.save(update_fields=["status", "updated_at"])
+    return JsonResponse({"ok": True, "status": prog.status, "message": "Marked In Progress."})
+
+
+@login_required
+@csrf_exempt
+def api_mark_complete(request):
+    """Endpoint /complete
+    POST body or form data must include 'slug' or 'id'. Marks challenge COMPLETED and awards points.
+    Idempotent: points only returned first time.
+    """
+    if request.method != "POST":
+        return HttpResponseBadRequest("POST required")
+    slug = request.POST.get("slug")
+    ch_id = request.POST.get("id")
+    if not slug and not ch_id:
+        import json
+        try:
+            payload = json.loads(request.body.decode("utf-8") or "{}")
+        except Exception:
+            payload = {}
+        slug = payload.get("slug")
+        ch_id = payload.get("id")
+    try:
+        if slug:
+            challenge = get_object_or_404(Challenge, slug=slug)
+        else:
+            challenge = get_object_or_404(Challenge, id=int(ch_id))
+    except Exception:
+        return JsonResponse({"ok": False, "message": "Challenge not found."}, status=404)
+    prog, _ = ChallengeProgress.objects.get_or_create(
+        user=request.user, challenge=challenge,
+        defaults={"status": ChallengeProgress.Status.ATTEMPTED}
+    )
+    if prog.status == ChallengeProgress.Status.COMPLETED:
+        # Already completed— do not re-award points
+        return JsonResponse({"ok": True, "status": prog.status, "points_awarded": 0, "message": "Already completed."})
+    prog.mark_completed()
+    return JsonResponse({"ok": True, "status": prog.status, "points_awarded": challenge.points, "message": f"Completed. +{challenge.points} points."})
+
+
+@login_required
 def completed_challenges_page(request):
     """List all challenges the user has completed with completion date."""
     progress_qs = ChallengeProgress.objects.filter(
