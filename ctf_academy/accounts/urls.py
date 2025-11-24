@@ -1,5 +1,3 @@
-# accounts/urls.py
-
 from django.urls import path
 from .views import (
     RegisterView,
@@ -9,9 +7,8 @@ from .views import (
     logout_page,
     admin_dashboard_page,
     profile_page,
-    # --- ADD THIS NEW VIEW ---
     MyTokenObtainPairView,
-    challenges_page, # <-- ADD THIS,
+    challenges_page,
     challenge_detail,
     leaderboards_page,
     completed_challenges_page,
@@ -22,20 +19,21 @@ from .views import (
     update_challenge_status,
     api_mark_inprogress,
     api_mark_complete,
+    # NEW CHATBOT VIEWS
+    chatbot_page,
+    chatbot_api,
 )
-# --- ADD THESE IMPORTS ---
 from rest_framework_simplejwt.views import (
     TokenRefreshView,
 )
 
 urlpatterns = [
-    # --- MODIFIED REST API ENDPOINTS ---
-    # The old LoginView is now removed and replaced by these two endpoints
+    # REST API ENDPOINTS
     path('api/token/', MyTokenObtainPairView.as_view(), name='token_obtain_pair'),
     path('api/token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
     path("api/register/", RegisterView.as_view(), name="register_api"),
 
-    # --- HTML TEMPLATE PAGES (Unchanged) ---
+    # HTML TEMPLATE PAGES
     path("register", register_page, name="register_page"),
     path("login", login_page, name="login_page"),
     path("logout", logout_page, name="logout_page"),
@@ -43,7 +41,7 @@ urlpatterns = [
     path("dashboard/", admin_dashboard_page, name="admin_dashboard_page"),
     path("profile/", profile_page, name="profile_page"),
 
-    # --- ADD THIS NEW PAGE ---
+    # CHALLENGES
     path("challenges/", challenges_page, name="challenges_page"),
     path("leaderboards/", leaderboards_page, name="leaderboards_page"),
     path("challenges/completed/", completed_challenges_page, name="completed_challenges_page"),
@@ -53,7 +51,12 @@ urlpatterns = [
     path("challenges/<slug:slug>/", challenge_detail, name="challenge_detail"),
     path("favorites/", favorites_page, name="favorites_page"),
     path("favorites/toggle/<int:challenge_id>/", toggle_favorite, name="toggle_favorite"),
-    # Lightweight command-style endpoints for terminal shortcuts
+    
+    # TERMINAL SHORTCUTS
     path("inprogress", api_mark_inprogress, name="api_inprogress"),
     path("complete", api_mark_complete, name="api_complete"),
+
+    # CHATBOT
+    path("chatbot/", chatbot_page, name="chatbot_page"),
+    path("api/chatbot/", chatbot_api, name="chatbot_api"),
 ]

@@ -123,3 +123,6 @@ SIMPLE_JWT = {
     "USER_ID_FIELD": "id",
     "USER_ID_CLAIM": "user_id",
 }
+
+# Gemini API Configuration
+GEMINI_API_KEY = env("GEMINI_API_KEY", default="")
