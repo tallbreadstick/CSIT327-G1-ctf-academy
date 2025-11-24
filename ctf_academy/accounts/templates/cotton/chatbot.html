@@ -1,0 +1,32 @@
+<!-- Chatbot Floating Button -->
+<a href="{% url 'chatbot_page' %}"
+   class="fixed bottom-4 right-4 bg-pink-600 hover:bg-pink-700 text-white rounded-full p-4 shadow-2xl 
+          transition-transform hover:scale-110 z-[9999] group animate-pulse-slow">
+
+    <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8" fill="none"
+         viewBox="0 0 24 24" stroke="currentColor">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+              d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />
+    </svg>
+
+    <span class="absolute right-full mr-3 top-1/2 -translate-y-1/2 bg-gray-800 text-white px-3 py-2 
+                 rounded-lg text-sm whitespace-nowrap opacity-0 group-hover:opacity-100 
+                 transition-opacity pointer-events-none">
+        Ask our AI Assistant
+    </span>
+
+    <span class="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full h-5 w-5 
+                 flex items-center justify-center animate-pulse">
+        AI
+    </span>
+</a>
+
+<style>
+@keyframes pulse-slow {
+    0%, 100% { box-shadow: 0 0 0 0 rgba(236, 72, 153, 0.7); }
+    50% { box-shadow: 0 0 0 15px rgba(236, 72, 153, 0); }
+}
+.animate-pulse-slow {
+    animation: pulse-slow 2s infinite;
+}
+</style>

@@ -21,12 +21,20 @@ from .serializers import MyTokenObtainPairSerializer
 from rest_framework_simplejwt.views import TokenObtainPairView
 from rest_framework.permissions import IsAuthenticated
 
+import google.generativeai as genai
+from django.conf import settings
+from django.http import JsonResponse
+import json
+
 # --- NEW VIEW TO GENERATE TOKEN WITH CUSTOM PAYLOAD ---
 class MyTokenObtainPairView(TokenObtainPairView):
     serializer_class = MyTokenObtainPairSerializer
 
+
 # --- REMOVED THE OLD LoginView(APIView) CLASS ---
 # The class above replaces it and handles token generation automatically.
+
+
 
 class RegisterView(APIView):
     def post(self, request):
@@ -790,3 +798,111 @@ def incomplete_challenges_page(request):
         })
 
     return render(request, "accounts/incomplete_challenges.html", {"items": items})
+
+
+def chatbot_page(request):
+    """Render the chatbot page"""
+    return render(request, 'accounts/chatbot.html')
+
+
+def chatbot_api(request):
+    """Handle chatbot API requests"""
+    if request.method != 'POST':
+        return JsonResponse({'error': 'POST method required'}, status=405)
+    
+    try:
+        data = json.loads(request.body)
+        user_message = data.get('message', '').strip()
+        
+        if not user_message:
+            return JsonResponse({'error': 'Message is required'}, status=400)
+        
+        # Check if API key is configured
+        if not settings.GEMINI_API_KEY:
+            return JsonResponse({
+                'error': 'Gemini API key not configured. Please add GEMINI_API_KEY to your .env file.',
+                'success': False
+            }, status=500)
+        
+        # Configure Gemini
+        genai.configure(api_key=settings.GEMINI_API_KEY)
+        
+        # Use generate_content directly without specifying model
+        # This uses the default available model
+        generation_config = {
+            "temperature": 0.7,
+            "top_p": 1,
+            "top_k": 1,
+            "max_output_tokens": 2048,
+        }
+        
+        # System context for CTF Academy
+        context = """You are a helpful AI assistant for CTF Academy, a LeetCode-style learning platform for offensive cybersecurity. 
+
+CTF Academy offers:
+- Logical cybersecurity challenges focusing on reasoning and problem-solving
+- Sandboxed environments for safe exploration
+- Leaderboards and streak tracking for competition
+- Various challenge categories (Web, Cryptography, Reverse Engineering, etc.)
+
+Answer questions about:
+- Cybersecurity concepts and techniques
+- How to approach CTF challenges
+- Platform features and navigation
+- General offensive security topics
+
+Be helpful, encouraging, and educational. Keep responses concise and actionable."""
+        
+        full_prompt = f"{context}\n\nUser: {user_message}\n\nAssistant:"
+        
+        # Try the working models for this API key (Gemini 2.0/2.5)
+        model_attempts = [
+            'gemini-2.5-flash',
+            'gemini-2.0-flash',
+            'gemini-flash-latest',
+            'gemini-2.5-pro',
+            'gemini-pro-latest',
+        ]
+        
+        response_text = None
+        for model_name in model_attempts:
+            try:
+                model = genai.GenerativeModel(model_name)
+                response = model.generate_content(
+                    full_prompt,
+                    generation_config=generation_config
+                )
+                response_text = response.text
+                print(f"✓ SUCCESS with model: {model_name}")
+                break
+            except Exception as e:
+                error_msg = str(e)[:150]
+                print(f"✗ Model '{model_name}' failed: {error_msg}")
+                continue
+        
+        if not response_text:
+            return JsonResponse({
+                'error': 'Could not generate response with any available model. Please check your API key permissions.',
+                'success': False
+            }, status=500)
+        
+        return JsonResponse({
+            'response': response_text,
+            'success': True
+        })
+        
+    except json.JSONDecodeError as e:
+        print(f"JSON decode error: {e}")
+        return JsonResponse({
+            'error': 'Invalid JSON format',
+            'success': False
+        }, status=400)
+    
+    except Exception as e:
+        print(f"Chatbot API error: {type(e).__name__}: {e}")
+        import traceback
+        print(f"Full traceback:\n{traceback.format_exc()}")
+        return JsonResponse({
+            'error': f'An error occurred: {str(e)}',
+            'success': False
+        }, status=500)
