@@ -243,7 +243,9 @@ def challenges_page(request):
     category_slug = request.GET.get("category", "")
     difficulty = request.GET.get("difficulty", "")
     sort_by = request.GET.get("sort_by", "id")  # default sort by id
-    status_filter = request.GET.get("status", "")  # '', 'completed', 'incomplete', 'favorites'
+    # Independent filters: status axis and favorites axis
+    status_filter = request.GET.get("status", "")  # '', 'completed', 'incomplete'
+    favorites_filter = request.GET.get("favorites", "")  # '', '1'
 
     if category_slug:
         qs = qs.filter(category__slug=category_slug)
@@ -286,12 +288,13 @@ def challenges_page(request):
         ).values_list("challenge_id", flat=True)
         qs = qs.filter(id__in=completed_ids)
     elif status_filter == "incomplete":
-        # Incomplete now means: actively in progress only
-        inprog_ids = ChallengeProgress.objects.filter(
-            user=user, status=ChallengeProgress.Status.IN_PROGRESS
-        ).values_list("challenge_id", flat=True)
-        qs = qs.filter(id__in=inprog_ids)
-    elif status_filter == "favorites":
+        # Incomplete defined as any progress not completed (attempted, in progress, unsolved)
+        incom_ids = ChallengeProgress.objects.filter(
+            user=user,
+        ).exclude(status=ChallengeProgress.Status.COMPLETED).values_list("challenge_id", flat=True)
+        qs = qs.filter(id__in=incom_ids)
+
+    if favorites_filter == "1":
         fav_ids = Favorite.objects.filter(user=user).values_list("challenge_id", flat=True)
         qs = qs.filter(id__in=fav_ids)
 
@@ -366,7 +369,8 @@ def challenges_page(request):
         "selected_category": category_slug,
         "selected_difficulty": difficulty,
         "selected_sort": sort_by,
-        "selected_status": status_filter,
+    "selected_status": status_filter,
+    "favorites_filter": favorites_filter,
         "q": q,
         "stats": stats,
     }
