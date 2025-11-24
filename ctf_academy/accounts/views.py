@@ -390,12 +390,41 @@ def leaderboards_page(request):
 
     # Preload progress for all users to compute points from completed challenges
     from collections import defaultdict
+    from datetime import timedelta
+    
     progress_rows = ChallengeProgress.objects.filter(status=ChallengeProgress.Status.COMPLETED)
     points_map = defaultdict(int)
     completed_count_map = defaultdict(int)
+    completion_dates_map = defaultdict(set)
+
     for p in progress_rows.select_related("challenge"):
         points_map[p.user_id] += p.challenge.points
         completed_count_map[p.user_id] += 1
+        if p.completed_at:
+            local_date = timezone.localtime(p.completed_at).date()
+            completion_dates_map[p.user_id].add(local_date)
+
+    # Calculate streaks
+    streak_map = {}
+    today = timezone.localtime(timezone.now()).date()
+    yesterday = today - timedelta(days=1)
+
+    for user_id, dates in completion_dates_map.items():
+        streak = 0
+        check_date = today
+        
+        if check_date not in dates:
+            if yesterday in dates:
+                check_date = yesterday
+            else:
+                streak_map[user_id] = 0
+                continue
+
+        while check_date in dates:
+            streak += 1
+            check_date -= timedelta(days=1)
+        
+        streak_map[user_id] = streak
 
     leaders = []
     for u in users_qs:
@@ -413,7 +442,7 @@ def leaderboards_page(request):
             "username": u.username,
             "points": points_map.get(u.id, 0),
             "challenges": completed_count_map.get(u.id, 0),
-            "streak": 0,  # streak logic TBD
+            "streak": streak_map.get(u.id, 0),
             "image_uri": image_uri,
             "date_joined": u.date_joined,
         })
@@ -426,9 +455,11 @@ def leaderboards_page(request):
 
     # Current user's rank (1-based) if present in list
     current_user_rank = None
+    current_user_stats = None
     for idx, row in enumerate(leaders, start=1):
         if row["id"] == request.user.id:
             current_user_rank = idx
+            current_user_stats = row
             break
 
     context = {
@@ -436,6 +467,7 @@ def leaderboards_page(request):
         "leaders": rest,
         "all_leaders": leaders,  # optional full list if template needs it
         "current_user_rank": current_user_rank,
+        "current_user_stats": current_user_stats,
         "start_rank": start_rank,
     }
 

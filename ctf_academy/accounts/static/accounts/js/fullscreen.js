@@ -47,9 +47,6 @@ document.addEventListener("DOMContentLoaded", () => {
             fullscreenPrompt.classList.add("opacity-100", "pointer-events-auto");
         }, 500); // 0.5s fade buffer
 
-        // When the user clicks to continue, after fade-out completes
-        document.dispatchEvent(new Event("challenge-ready"));
-
     }, 4000); // 4s loading duration
 
     // 5️⃣ Fullscreen trigger on click
@@ -61,5 +58,8 @@ document.addEventListener("DOMContentLoaded", () => {
 
         fullscreenPrompt.classList.add("opacity-0", "pointer-events-none");
         setTimeout(() => fullscreenPrompt.remove(), 500);
+
+        // When the user clicks to continue, after fade-out completes
+        document.dispatchEvent(new Event("challenge-start"));
     });
 });

@@ -613,7 +613,9 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 });
 
-document.addEventListener("challenge-ready", () => {
+document.addEventListener("challenge-start", () => {
+    document.body.classList.remove('desktop-locked');
+    document.body.classList.add('desktop-active');
     // Spawn initial text document if provided
     if (INITIAL_TEXT && INITIAL_TEXT.trim() !== "") {
         DWM.openWindow('text', { singleton: true, title: 'Welcome.txt', content: INITIAL_TEXT });
