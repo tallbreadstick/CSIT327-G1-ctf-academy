@@ -201,6 +201,12 @@ class ChallengeProgress(models.Model):
     # If the client failed to save progress last time
     last_saved_ok = models.BooleanField(default=True)
 
+    # Some earlier DB migrations introduced a NOT NULL column `created_at` that
+    # was later removed from the model, causing inserts to fail (IntegrityError
+    # null value in column "created_at"). We reintroduce it here so Django will
+    # populate it automatically and align ORM state with the existing schema.
+    created_at = models.DateTimeField(auto_now_add=True)
+
     started_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     completed_at = models.DateTimeField(blank=True, null=True)

@@ -35,7 +35,7 @@
     <!-- NAVBAR -->
     <c-navbar></c-navbar>
 
-    <main class="container mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-10">
+    <main class="container mx-auto max-w-6xl px-6 py-10">
 
         <!-- STATS BAR -->
         <section class="grid grid-cols-1 md:grid-cols-4 gap-px bg-[var(--color-border)] border border-[var(--color-border)] rounded-lg overflow-hidden mb-10">
@@ -76,82 +76,128 @@
             </div>
         </section>
 
-        <!-- FILTER BAR -->
-        <section class="flex flex-col md:flex-row items-center bg-transparent border border-[var(--color-border)] rounded-md mb-10 focus-within:ring-1 focus-within:ring-pink-500 focus-within:border-pink-500 divide-y md:divide-y-0 md:divide-x divide-[var(--color-border)]">
-            
-            <form method="get" class="flex w-full md:flex-1">
-                <div class="relative w-full md:w-auto md:flex-grow">
-                    <i class="fas fa-search absolute left-4 top-1/2 -translate-y-1/2 text-[var(--color-text-dark)]"></i>
-                    <input name="q" value="{{ q }}" type="text" class="w-full bg-transparent border-none rounded-t-md md:rounded-l-md md:rounded-tr-none py-2.5 px-4 pl-10 text-[var(--color-text-light)] placeholder:text-[var(--color-text-dark)] focus:ring-0" placeholder="Search challenges...">
+        {# COMPACT FILTER DROPDOWN #}
+    {% with active_filters=0 %}
+            {% if q %}{% with active_filters=active_filters|add:1 %}{% endwith %}{% endif %}
+            {% if selected_category %}{% with active_filters=active_filters|add:1 %}{% endwith %}{% endif %}
+            {% if selected_difficulty %}{% with active_filters=active_filters|add:1 %}{% endwith %}{% endif %}
+            {% if selected_status %}{% with active_filters=active_filters|add:1 %}{% endwith %}{% endif %}
+            {% if favorites_filter %}{% with active_filters=active_filters|add:1 %}{% endwith %}{% endif %}
+            <div class="mb-6 relative">
+                <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+                    <h2 class="text-2xl font-semibold text-white">Challenges ({{ challenges|length }})</h2>
+                    
+                    <div class="flex items-center gap-3 w-full md:w-auto">
+                        <form method="get" class="relative flex-grow md:flex-grow-0 md:w-64">
+                            {# Preserve current non-search filters when searching #}
+                            <input type="hidden" name="sort_by" value="{{ selected_sort }}" />
+                            <input type="hidden" name="category" value="{{ selected_category }}" />
+                            <input type="hidden" name="difficulty" value="{{ selected_difficulty }}" />
+                            <input type="hidden" name="status" value="{{ selected_status }}" />
+                            <input type="hidden" name="favorites" value="{{ favorites_filter }}" />
+                            <i class="fas fa-search absolute left-3 top-1/2 -translate-y-1/2 text-[var(--color-text-dark)]"></i>
+                            <input name="q" value="{{ q }}" type="text" placeholder="Search..."
+                                   class="w-full bg-transparent border border-[var(--color-border)] rounded pl-9 pr-3 py-2 text-[var(--color-text-light)] placeholder:text-[var(--color-text-dark)] focus:outline-none focus:border-pink-500 focus:ring-1 focus:ring-pink-500" />
+                        </form>
+                        
+                        <button type="button" id="filters-toggle"
+                                class="flex items-center gap-2 px-4 py-2 rounded-md border border-[var(--color-border)] bg-[var(--color-bg-secondary)] hover:border-pink-500/60 hover:text-pink-300 text-sm font-medium whitespace-nowrap"
+                                aria-expanded="false" aria-controls="filters-panel">
+                            <i class="fas fa-sliders-h text-[var(--color-text-dark)]"></i>
+                            Filters
+                            <span id="filters-count" class="text-xs px-2 py-0.5 rounded-full bg-pink-600/20 border border-pink-500 text-pink-300 {% if active_filters == 0 %}hidden{% endif %}">{{ active_filters }}</span>
+                        </button>
+                    </div>
                 </div>
 
-                <div class="flex items-center gap-2 px-4 py-2.5">
-                    <label class="text-sm text-[var(--color-text-dark)] mr-2">Sort by:</label>
-                    <select name="sort_by"
-                            onchange="this.form.submit()"
-                            class="bg-[var(--color-bg-secondary)] border border-[var(--color-border)]
-                                text-[var(--color-text-light)] px-2 py-1 rounded">
-                        <option value="id" {% if selected_sort == "id" %}selected{% endif %}>ID</option>
-                        <option value="points" {% if selected_sort == "points" %}selected{% endif %}>Points</option>
-                        <option value="difficulty" {% if selected_sort == "difficulty" %}selected{% endif %}>Difficulty</option>
-                        <option value="title" {% if selected_sort == "title" %}selected{% endif %}>Title</option>
-                    </select>
+                <div id="filters-panel" class="hidden absolute z-30 mt-2 right-0 w-full max-w-xl bg-[var(--color-bg-secondary)] border border-[var(--color-border)] rounded-md shadow-lg p-4">
+                    <form method="get" id="filters-form" class="space-y-4">
+                        <input type="hidden" name="q" value="{{ q }}" />
+                        <div class="grid grid-cols-2 gap-4">
+                            <div>
+                                <label class="text-xs uppercase tracking-wide text-[var(--color-text-dark)]">Sort</label>
+                                <select name="sort_by" class="mt-1 w-full bg-[var(--color-bg-secondary)] border border-[var(--color-border)] text-[var(--color-text-light)] px-2 py-1 rounded">
+                                    <option value="id" {% if selected_sort == 'id' %}selected{% endif %}>ID</option>
+                                    <option value="points" {% if selected_sort == 'points' %}selected{% endif %}>Points</option>
+                                    <option value="difficulty" {% if selected_sort == 'difficulty' %}selected{% endif %}>Difficulty</option>
+                                    <option value="title" {% if selected_sort == 'title' %}selected{% endif %}>Title</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="text-xs uppercase tracking-wide text-[var(--color-text-dark)]">Category</label>
+                                <select name="category" class="mt-1 w-full bg-[var(--color-bg-secondary)] border border-[var(--color-border)] text-[var(--color-text-light)] px-2 py-1 rounded">
+                                    <option value="">All</option>
+                                    {% for cat in categories %}
+                                        <option value="{{ cat.slug }}" {% if cat.slug == selected_category %}selected{% endif %}>{{ cat.name }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            <div>
+                                <label class="text-xs uppercase tracking-wide text-[var(--color-text-dark)]">Difficulty</label>
+                                <select name="difficulty" class="mt-1 w-full bg-[var(--color-bg-secondary)] border border-[var(--color-border)] text-[var(--color-text-light)] px-2 py-1 rounded">
+                                    <option value="">All Levels</option>
+                                    {% for value, label in DIFFICULTY_CHOICES %}
+                                        <option value="{{ value }}" {% if value == selected_difficulty %}selected{% endif %}>{{ label }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            <div>
+                                <label class="text-xs uppercase tracking-wide text-[var(--color-text-dark)]">Status</label>
+                                <select name="status" class="mt-1 w-full bg-[var(--color-bg-secondary)] border border-[var(--color-border)] text-[var(--color-text-light)] px-2 py-1 rounded">
+                                    <option value="" {% if not selected_status %}selected{% endif %}>Either</option>
+                                    <option value="completed" {% if selected_status == 'completed' %}selected{% endif %}>Completed</option>
+                                    <option value="incomplete" {% if selected_status == 'incomplete' %}selected{% endif %}>Incomplete</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="text-xs uppercase tracking-wide text-[var(--color-text-dark)]">Favorites</label>
+                                <select name="favorites" class="mt-1 w-full bg-[var(--color-bg-secondary)] border border-[var(--color-border)] text-[var(--color-text-light)] px-2 py-1 rounded">
+                                    <option value="" {% if not favorites_filter %}selected{% endif %}>All</option>
+                                    <option value="1" {% if favorites_filter == '1' %}selected{% endif %}>Only Fav</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="flex justify-between items-center pt-2">
+                            <button type="reset" id="filters-reset" class="text-xs text-[var(--color-text-dark)] hover:text-pink-300">Reset</button>
+                            <div class="space-x-2">
+                                <button type="button" id="filters-cancel" class="px-3 py-1 rounded border border-[var(--color-border)] text-sm text-[var(--color-text-light)] hover:border-pink-500/60">Close</button>
+                                <button type="submit" class="px-3 py-1 rounded bg-pink-600 text-white text-sm hover:bg-pink-500">Apply</button>
+                            </div>
+                        </div>
+                    </form>
                 </div>
-
-                <div class="flex items-center gap-2 px-4 py-2.5">
-                    <label class="text-sm text-[var(--color-text-dark)] mr-2">Category:</label>
-                    <select name="category"
-                            onchange="this.form.submit()"
-                            class="bg-[var(--color-bg-secondary)] border border-[var(--color-border)]
-                                text-[var(--color-text-light)] px-2 py-1 rounded">
-                        <option class="!bg-[var(--color-bg-primary)]" value="">All Categories</option>
-                        {% for cat in categories %}
-                            <option class="!bg-[var(--color-bg-primary)]"
-                                    value="{{ cat.slug }}"
-                                    {% if cat.slug == selected_category %}selected{% endif %}>
-                                {{ cat.name }}
-                            </option>
-                        {% endfor %}
-                    </select>
-                </div>
-
-                <div class="flex items-center gap-2 px-4 py-2.5 rounded-b-md md:rounded-r-md md:rounded-bl-none">
-                    <label class="text-sm text-[var(--color-text-dark)] mr-2">Difficulty:</label>
-                    <select name="difficulty"
-                            onchange="this.form.submit()"
-                            class="bg-[var(--color-bg-secondary)] border border-[var(--color-border)]
-                                text-[var(--color-text-light)] px-2 py-1 rounded">
-                        <option class="!bg-[var(--color-bg-primary)]" value="">All Levels</option>
-                        {% for value, label in DIFFICULTY_CHOICES %}
-                            <option class="!bg-[var(--color-bg-primary)]"
-                                    value="{{ value }}"
-                                    {% if value == selected_difficulty %}selected{% endif %}>
-                                {{ label }}
-                            </option>
-                        {% endfor %}
-                    </select>
-                </div>
-            </form>
-        </section>
-
-        <!-- QUICK LINKS -->
-        <div class="flex gap-4 justify-end mb-4 text-sm">
-            <a href="{% url 'incomplete_challenges_page' %}" class="text-pink-400 hover:underline">Incomplete</a>
-            <a href="{% url 'completed_challenges_page' %}" class="text-pink-400 hover:underline">Completed</a>
-            <a href="{% url 'favorites_page' %}" class="text-pink-400 hover:underline">Favorites</a>
-        </div>
+            </div>
+        {% endwith %}
+        <script>
+        (function(){
+            const toggleBtn = document.getElementById('filters-toggle');
+            const panel = document.getElementById('filters-panel');
+            const cancelBtn = document.getElementById('filters-cancel');
+            const form = document.getElementById('filters-form');
+            const resetBtn = document.getElementById('filters-reset');
+            if(!toggleBtn || !panel) return;
+            function close(){ panel.classList.add('hidden'); toggleBtn.setAttribute('aria-expanded','false'); }
+            function open(){ panel.classList.remove('hidden'); toggleBtn.setAttribute('aria-expanded','true'); }
+            toggleBtn.addEventListener('click', ()=>{ panel.classList.contains('hidden')?open():close(); });
+            cancelBtn && cancelBtn.addEventListener('click', ()=> close());
+            // Auto submit on select change (optional except Apply button)
+            panel.querySelectorAll('select').forEach(sel=> sel.addEventListener('change', ()=>{}));
+            // Reset clears inputs & submits
+            resetBtn && resetBtn.addEventListener('click', (e)=>{ e.preventDefault(); form.querySelectorAll('input[type=text]').forEach(i=>i.value=''); form.querySelectorAll('select').forEach(s=>{ if(s.name==='sort_by') s.value='id'; else s.value=''; }); form.submit(); });
+            // Close when clicked outside
+            document.addEventListener('click', (e)=>{ if(!panel.contains(e.target) && !toggleBtn.contains(e.target)) close(); });
+            // ESC to close
+            document.addEventListener('keydown', (e)=>{ if(e.key==='Escape') close(); });
+        })();
+        </script>
 
         <!-- CHALLENGES GRID -->
         <section>
-            <h2 class="text-2xl font-semibold text-white mb-6">Challenges ({{ challenges|length }})</h2>
-
             <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                 {% for c in challenges %}
                 <div class="bg-[var(--color-bg-secondary)] border border-[var(--color-border)] rounded-lg p-6 relative hover:border-pink-500/50 transition-colors">
                     
-                    {% if c.is_completed %}
-                        <i class="fas fa-check-circle text-green-500 text-xl absolute top-6 right-12"></i>
-                    {% endif %}
+                    {# Removed legacy top-right completion icon; pill badge after title now indicates completion #}
 
                     <!-- Favorite star -->
                     <button
@@ -170,8 +216,14 @@
                         <i class="{% if c.category.icon_class %}{{ c.category.icon_class }}{% else %}fa-solid fa-shield-halved{% endif %} text-2xl text-[var(--color-accent-pink)] mt-0.5"></i>
 
                         <div>
-                            <h3 class="text-lg font-semibold text-white">
+                            <h3 class="text-lg font-semibold text-white flex items-center">
                                 <a href="{% url 'challenge_detail' c.slug %}" class="hover:underline">{{ c.title }}</a>
+                                {% if c.is_completed %}
+                                <span class="ml-3 inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-green-600/20 border border-green-500 text-green-300 text-xs font-medium animate-pulse completed-badge" aria-label="Challenge completed" title="Challenge completed">
+                                    <i class="fas fa-check"></i>
+                                    <span class="hidden sm:inline">Completed</span>
+                                </span>
+                                {% endif %}
                             </h3>
 
                             <p class="text-sm text-[var(--color-text-dark)] mb-2">{{ c.category.name }}</p>
