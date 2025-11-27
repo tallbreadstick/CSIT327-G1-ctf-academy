@@ -278,7 +278,7 @@ def challenges_page(request):
     sort_options = {
         "id": "id",
         "points": "-points",
-        "difficulty": "difficulty",  # you could also do "-difficulty" if needed
+        "difficulty": "difficulty",
         "title": "title",
     }
 
@@ -321,6 +321,7 @@ def challenges_page(request):
     points_earned = 0
 
     try:
+        # Check if using legacy model structure (safeguard)
         if hasattr(Challenge, "completed_by"):
             completed_qs = qs.filter(completed_by=user)
             completed_count = completed_qs.count()
@@ -330,11 +331,13 @@ def challenges_page(request):
             completed_ids = set(completed_qs.values_list("id", flat=True))
             for ch in challenges:
                 ch.is_completed = (ch.id in completed_ids)
+                ch.is_in_progress = False # Legacy model fallback
                 try:
                     ch.tools_count = len(ch.topology.get("tools", [])) if ch.topology else 0
                 except Exception:
                     ch.tools_count = 0
         else:
+            # Standard ChallengeProgress path
             progress_qs = ChallengeProgress.objects.filter(user=user, challenge__in=qs)
             completed_count = progress_qs.filter(status=ChallengeProgress.Status.COMPLETED).count()
             in_progress_count = progress_qs.filter(status=ChallengeProgress.Status.IN_PROGRESS).count()
@@ -342,17 +345,25 @@ def challenges_page(request):
 
             challenges = list(qs)
             prog_map = {p.challenge_id: p.status for p in progress_qs}
+            
             for ch in challenges:
-                ch.is_completed = prog_map.get(ch.id) == ChallengeProgress.Status.COMPLETED
-                ch.tools_count = len(ch.topology.get("tools", [])) if ch.topology else 0
+                status = prog_map.get(ch.id)
+                ch.is_completed = (status == ChallengeProgress.Status.COMPLETED)
+                ch.is_in_progress = (status == ChallengeProgress.Status.IN_PROGRESS) # <--- Logic Added Here
+                try:
+                    ch.tools_count = len(ch.topology.get("tools", [])) if ch.topology else 0
+                except Exception:
+                    ch.tools_count = 0
 
     except Exception:
+        # Fallback if DB error occurs
         completed_count = 0
         in_progress_count = 0
         points_earned = 0
         challenges = list(qs)
         for ch in challenges:
             ch.is_completed = False
+            ch.is_in_progress = False
             try:
                 ch.tools_count = len(ch.topology.get("tools", [])) if ch.topology else 0
             except Exception:
@@ -383,8 +394,8 @@ def challenges_page(request):
         "selected_category": category_slug,
         "selected_difficulty": difficulty,
         "selected_sort": sort_by,
-    "selected_status": status_filter,
-    "favorites_filter": favorites_filter,
+        "selected_status": status_filter,
+        "favorites_filter": favorites_filter,
         "q": q,
         "stats": stats,
     }
