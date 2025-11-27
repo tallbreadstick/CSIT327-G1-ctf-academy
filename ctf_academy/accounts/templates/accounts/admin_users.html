@@ -1,325 +1,1200 @@
 {% load static tailwind_tags %}
 <!DOCTYPE html>
 <html lang="en">
-<head>
-    <meta charset="UTF-8">
+  <head>
+    <meta charset="UTF-8" />
     <title>CTF Academy - Manage Users</title>
-    <link rel="icon" type="image/png" href="{% static 'accounts/images/logo.png' %}">
+    <link
+      rel="icon"
+      type="image/png"
+      href="{% static 'accounts/images/logo.png' %}"
+    />
     {% tailwind_css %}
     <style>
-        html, body { overflow: auto !important; }
-        @keyframes fadeInUp {
-            from { opacity: 0; transform: translateY(20px); }
-            to { opacity: 1; transform: translateY(0); }
+      html,
+      body {
+        overflow: auto !important;
+      }
+      @keyframes fadeInUp {
+        from {
+          opacity: 0;
+          transform: translateY(20px);
         }
-        @keyframes bg-pan {
-            0% { background-position: 0% center; }
-            100% { background-position: 200% center; }
+        to {
+          opacity: 1;
+          transform: translateY(0);
         }
-        .fade-up { animation: fadeInUp 0.5s ease-out forwards; }
-        .glow-text {
-            background: linear-gradient(90deg, #ec4899, #f9a8d4, #ffffff);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            background-size: 200% auto;
-            animation: bg-pan 8s linear infinite;
+      }
+      @keyframes bg-pan {
+        0% {
+          background-position: 0% center;
         }
-        .glass-card {
-            background: rgba(31, 41, 55, 0.6);
-            backdrop-filter: blur(10px);
-            border: 1px solid rgba(236, 72, 153, 0.2);
+        100% {
+          background-position: 200% center;
         }
-        .stat-badge {
-            display: inline-flex;
-            align-items: center;
-            padding: 0.25rem 0.5rem;
-            border-radius: 9999px;
-            font-size: 0.75rem;
-            font-weight: 500;
+      }
+      @keyframes slideInRight {
+        from {
+          transform: translateX(100%);
+          opacity: 0;
         }
-    </style>
-</head>
-<body class="bg-gray-900 text-white flex min-h-screen relative overflow-hidden">
+        to {
+          transform: translateX(0);
+          opacity: 1;
+        }
+      }
+      @keyframes fadeOut {
+        from {
+          opacity: 1;
+        }
+        to {
+          opacity: 0;
+        }
+      }
+      .fade-up {
+        animation: fadeInUp 0.5s ease-out forwards;
+      }
+      .toast-enter {
+        animation: slideInRight 0.3s ease-out forwards;
+      }
+      .toast-exit {
+        animation: fadeOut 0.3s ease-out forwards;
+      }
 
+      .glow-text {
+        background: linear-gradient(90deg, #ec4899, #f9a8d4, #ffffff);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-size: 200% auto;
+        animation: bg-pan 8s linear infinite;
+      }
+      .glass-card {
+        background: rgba(31, 41, 55, 0.6);
+        backdrop-filter: blur(10px);
+        border: 1px solid rgba(236, 72, 153, 0.2);
+      }
+      .stat-badge {
+        display: inline-flex;
+        align-items: center;
+        padding: 0.25rem 0.5rem;
+        border-radius: 9999px;
+        font-size: 0.75rem;
+        font-weight: 500;
+      }
+
+      /* FIX FOR EXISTING STRUCTURE */
+      #userDetailsModal {
+        z-index: 10000 !important;
+      }
+
+      #editUserModal {
+        z-index: 10000 !important;
+      }
+
+      #confirmationModal {
+        z-index: 10000 !important;
+      }
+
+      /* Ensure modal backdrops are above everything */
+      #userDetailsModal > div,
+      #editUserModal > div,
+      #confirmationModal > div {
+        z-index: 10001 !important;
+        position: relative;
+      }
+
+      /* Toast should be below modals */
+      #toast-container {
+        z-index: 9999 !important;
+      }
+    </style>
+  </head>
+  <body
+    class="bg-gray-900 text-white flex min-h-screen relative overflow-hidden"
+  >
     <!-- BACKGROUND EFFECT -->
-    <div class="absolute inset-0 opacity-10 bg-[radial-gradient(circle_at_center,#ec4899,transparent_70%)] animate-pulse"></div>
+    <div
+      class="absolute inset-0 opacity-10 bg-[radial-gradient(circle_at_center,#ec4899,transparent_70%)] animate-pulse"
+    ></div>
+
+    <!-- TOAST CONTAINER -->
+    <div
+      id="toast-container"
+      class="fixed top-20 right-5 z-[4000] space-y-3 pointer-events-none"
+    >
+      <!-- Toasts will be injected here -->
+    </div>
 
     <!-- SIDEBAR -->
-    <aside class="w-48 bg-gray-800/80 backdrop-blur border-r border-gray-700 flex flex-col relative z-10">
-        <div class="p-4 border-b border-gray-700">
-            <div class="flex items-center space-x-2">
-                <img src="{% static 'accounts/images/logo.png' %}" alt="Logo" class="h-7 w-7">
-                <span class="text-lg font-bold glow-text">CTF Academy</span>
-            </div>
+    <aside
+      class="w-48 bg-gray-800/80 backdrop-blur border-r border-gray-700 flex flex-col relative z-10"
+    >
+      <div class="p-4 border-b border-gray-700">
+        <div class="flex items-center space-x-2">
+          <img
+            src="{% static 'accounts/images/logo.png' %}"
+            alt="Logo"
+            class="h-7 w-7"
+          />
+          <span class="text-lg font-bold glow-text">CTF Academy</span>
         </div>
+      </div>
 
-        <nav class="flex-grow p-3 space-y-1">
-            <a href="{% url 'admin_dashboard_page' %}" class="flex items-center space-x-2 px-3 py-2 text-gray-400 hover:text-white hover:bg-gray-700/50 rounded-lg transition text-sm">
-                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/>
-                </svg>
-                <span>Dashboard</span>
-            </a>
-            
-            <a href="{% url 'admin_users_page' %}" class="flex items-center space-x-2 px-3 py-2 bg-pink-600/20 text-pink-400 rounded-lg border border-pink-600/50 font-medium text-sm">
-                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"/>
-                </svg>
-                <span>Manage Users</span>
-            </a>
-            
-            <a href="{% url 'admin_dashboard_page' %}#challenges-section" class="flex items-center space-x-2 px-3 py-2 text-gray-400 hover:text-white hover:bg-gray-700/50 rounded-lg transition text-sm">
-                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/>
-                </svg>
-                <span>Analytics</span>
-            </a>
-        </nav>
+      <nav class="flex-grow p-3 space-y-1">
+        <a
+          href="{% url 'admin_dashboard_page' %}"
+          class="flex items-center space-x-2 px-3 py-2 text-gray-400 hover:text-white hover:bg-gray-700/50 rounded-lg transition text-sm"
+        >
+          <svg
+            class="w-4 h-4"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="2"
+              d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"
+            />
+          </svg>
+          <span>Dashboard</span>
+        </a>
+
+        <a
+          href="{% url 'admin_users_page' %}"
+          class="flex items-center space-x-2 px-3 py-2 bg-pink-600/20 text-pink-400 rounded-lg border border-pink-600/50 font-medium text-sm"
+        >
+          <svg
+            class="w-4 h-4"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="2"
+              d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"
+            />
+          </svg>
+          <span>Manage Users</span>
+        </a>
+
+        <a
+          href="{% url 'admin_dashboard_page' %}#challenges-section"
+          class="flex items-center space-x-2 px-3 py-2 text-gray-400 hover:text-white hover:bg-gray-700/50 rounded-lg transition text-sm"
+        >
+          <svg
+            class="w-4 h-4"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="2"
+              d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"
+            />
+          </svg>
+          <span>Analytics</span>
+        </a>
+      </nav>
     </aside>
 
     <!-- MAIN CONTENT -->
     <div class="flex-grow flex flex-col relative z-10">
-        <!-- TOP NAVBAR -->
-        <header class="bg-gray-800/80 backdrop-blur border-b border-gray-700 px-6 py-3 relative" style="z-index: 1000;">
-            <div class="flex items-center justify-between">
-                <div>
-                    <h1 class="text-2xl font-bold">Manage Users</h1>
-                    <p class="text-sm text-gray-400">View and manage all platform users</p>
-                </div>
+      <!-- TOP NAVBAR -->
+      <header
+        class="bg-gray-800/80 backdrop-blur border-b border-gray-700 px-6 py-3 relative"
+        style="z-index: 50"
+      >
+        <div class="flex items-center justify-between">
+          <div>
+            <h1 class="text-2xl font-bold">Manage Users</h1>
+            <p class="text-sm text-gray-400">
+              View and manage all platform users
+            </p>
+          </div>
 
-                <div class="flex items-center space-x-4">
-                    <button onclick="exportUsers()" class="px-3 py-1.5 bg-pink-600/20 text-pink-400 border border-pink-600/50 rounded-lg text-sm hover:bg-pink-600/30 transition">
-                        Export Users
-                    </button>
-                    
-                    <a href="{% url 'logout_page' %}" class="px-3 py-1.5 bg-gray-700 hover:bg-gray-600 rounded-lg text-sm transition">
-                        Logout
-                    </a>
-                </div>
+          <div class="flex items-center space-x-4">
+            <button
+              onclick="exportUsers()"
+              class="px-3 py-1.5 bg-pink-600/20 text-pink-400 border border-pink-600/50 rounded-lg text-sm hover:bg-pink-600/30 transition"
+            >
+              Export Users
+            </button>
+
+            <a
+              href="{% url 'logout_page' %}"
+              class="px-3 py-1.5 bg-gray-700 hover:bg-gray-600 rounded-lg text-sm transition"
+            >
+              Logout
+            </a>
+          </div>
+        </div>
+      </header>
+
+      <!-- USER MANAGEMENT CONTENT -->
+      <main class="flex-grow p-5 overflow-y-auto relative" style="z-index: 1">
+        <!-- STATS OVERVIEW -->
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-5">
+          <div
+            class="glass-card rounded-lg p-4 fade-up hover:scale-105 transition"
+          >
+            <div class="flex items-center justify-between mb-2">
+              <h3 class="text-gray-400 text-xs font-medium">Total Users</h3>
+              <svg
+                class="w-5 h-5 text-pink-400"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="2"
+                  d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"
+                />
+              </svg>
             </div>
-        </header>
+            <p class="text-3xl font-bold text-white">{{ total_users }}</p>
+            <p class="text-xs text-gray-400 mt-1">Registered accounts</p>
+          </div>
 
-        <!-- USER MANAGEMENT CONTENT -->
-        <main class="flex-grow p-5 overflow-y-auto relative" style="z-index: 1;">
-            
-            <!-- STATS OVERVIEW -->
-            <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-5">
-                <div class="glass-card rounded-lg p-4 fade-up hover:scale-105 transition">
-                    <div class="flex items-center justify-between mb-2">
-                        <h3 class="text-gray-400 text-xs font-medium">Total Users</h3>
-                        <svg class="w-5 h-5 text-pink-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"/>
-                        </svg>
-                    </div>
-                    <p class="text-3xl font-bold text-white">{{ total_users }}</p>
-                    <p class="text-xs text-gray-400 mt-1">Registered accounts</p>
-                </div>
-
-                <div class="glass-card rounded-lg p-4 fade-up hover:scale-105 transition" style="animation-delay: 0.1s;">
-                    <div class="flex items-center justify-between mb-2">
-                        <h3 class="text-gray-400 text-xs font-medium">Active Users</h3>
-                        <svg class="w-5 h-5 text-pink-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
-                        </svg>
-                    </div>
-                    <p class="text-3xl font-bold text-white">{{ active_users }}</p>
-                    <p class="text-xs text-green-400 mt-1">Last 7 days</p>
-                </div>
-
-                <div class="glass-card rounded-lg p-4 fade-up hover:scale-105 transition" style="animation-delay: 0.2s;">
-                    <div class="flex items-center justify-between mb-2">
-                        <h3 class="text-gray-400 text-xs font-medium">Admin Users</h3>
-                        <svg class="w-5 h-5 text-pink-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/>
-                        </svg>
-                    </div>
-                    <p class="text-3xl font-bold text-white">{{ admin_users }}</p>
-                    <p class="text-xs text-gray-400 mt-1">Staff accounts</p>
-                </div>
-
-                <div class="glass-card rounded-lg p-4 fade-up hover:scale-105 transition" style="animation-delay: 0.3s;">
-                    <div class="flex items-center justify-between mb-2">
-                        <h3 class="text-gray-400 text-xs font-medium">New This Month</h3>
-                        <svg class="w-5 h-5 text-pink-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z"/>
-                        </svg>
-                    </div>
-                    <p class="text-3xl font-bold text-white">{{ new_users_this_month }}</p>
-                    <p class="text-xs text-green-400 mt-1">+{{ growth_percentage }}%</p>
-                </div>
+          <div
+            class="glass-card rounded-lg p-4 fade-up hover:scale-105 transition"
+            style="animation-delay: 0.1s"
+          >
+            <div class="flex items-center justify-between mb-2">
+              <h3 class="text-gray-400 text-xs font-medium">Active Users</h3>
+              <svg
+                class="w-5 h-5 text-pink-400"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="2"
+                  d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
+                />
+              </svg>
             </div>
+            <p class="text-3xl font-bold text-white">{{ active_users }}</p>
+            <p class="text-xs text-green-400 mt-1">Last 7 days</p>
+          </div>
 
-            <!-- SEARCH AND FILTER BAR -->
-            <div class="glass-card rounded-lg p-4 mb-5 fade-up" style="animation-delay: 0.4s;">
-                <div class="flex flex-col md:flex-row gap-3">
-                    <div class="flex-grow">
-                        <input type="text" id="searchInput" placeholder="Search by username or email..." 
-                               class="w-full px-4 py-2 bg-gray-700/50 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:border-pink-500 focus:outline-none transition"
-                               onkeyup="filterUsers()">
+          <div
+            class="glass-card rounded-lg p-4 fade-up hover:scale-105 transition"
+            style="animation-delay: 0.2s"
+          >
+            <div class="flex items-center justify-between mb-2">
+              <h3 class="text-gray-400 text-xs font-medium">Admin Users</h3>
+              <svg
+                class="w-5 h-5 text-pink-400"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="2"
+                  d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"
+                />
+              </svg>
+            </div>
+            <p class="text-3xl font-bold text-white">{{ admin_users }}</p>
+            <p class="text-xs text-gray-400 mt-1">Staff accounts</p>
+          </div>
+
+          <div
+            class="glass-card rounded-lg p-4 fade-up hover:scale-105 transition"
+            style="animation-delay: 0.3s"
+          >
+            <div class="flex items-center justify-between mb-2">
+              <h3 class="text-gray-400 text-xs font-medium">New This Month</h3>
+              <svg
+                class="w-5 h-5 text-pink-400"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="2"
+                  d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z"
+                />
+              </svg>
+            </div>
+            <p class="text-3xl font-bold text-white">
+              {{ new_users_this_month }}
+            </p>
+            <p class="text-xs text-green-400 mt-1">+{{ growth_percentage }}%</p>
+          </div>
+        </div>
+
+        <!-- SEARCH AND FILTER BAR -->
+        <div
+          class="glass-card rounded-lg p-4 mb-5 fade-up"
+          style="animation-delay: 0.4s"
+        >
+          <div class="flex flex-col md:flex-row gap-3">
+            <div class="flex-grow">
+              <input
+                type="text"
+                id="searchInput"
+                placeholder="Search by username or email..."
+                class="w-full px-4 py-2 bg-gray-700/50 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:border-pink-500 focus:outline-none transition"
+                onkeyup="filterUsers()"
+              />
+            </div>
+            <!-- REMOVED ROLE FILTER -->
+            <select
+              id="statusFilter"
+              class="px-4 py-2 bg-gray-700/50 border border-gray-600 rounded-lg text-white focus:border-pink-500 focus:outline-none transition"
+              onchange="filterUsers()"
+            >
+              <option value="">All Status</option>
+              <option value="active">Active</option>
+              <option value="inactive">Inactive</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- USERS TABLE -->
+        <div
+          class="glass-card rounded-lg p-5 fade-up"
+          style="animation-delay: 0.5s"
+        >
+          <h2
+            class="text-lg font-bold mb-4 text-pink-400 flex items-center justify-between"
+          >
+            <span class="flex items-center">
+              <svg
+                class="w-5 h-5 mr-2"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="2"
+                  d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"
+                />
+              </svg>
+              All Users
+            </span>
+            <span class="text-sm text-gray-400 font-normal"
+              >Showing
+              <span id="userCount">{{ users|length }}</span> users</span
+            >
+          </h2>
+          <div class="overflow-x-auto">
+            <table class="w-full text-sm" id="usersTable">
+              <thead>
+                <tr class="border-b border-gray-700">
+                  <th class="text-left py-3 px-2 text-gray-400 font-medium">
+                    User
+                  </th>
+                  <th class="text-left py-3 px-2 text-gray-400 font-medium">
+                    Email
+                  </th>
+                  <th class="text-center py-3 px-2 text-gray-400 font-medium">
+                    Role
+                  </th>
+                  <th class="text-center py-3 px-2 text-gray-400 font-medium">
+                    Points
+                  </th>
+                  <th class="text-center py-3 px-2 text-gray-400 font-medium">
+                    Completed
+                  </th>
+                  <th class="text-center py-3 px-2 text-gray-400 font-medium">
+                    Joined
+                  </th>
+                  <th class="text-center py-3 px-2 text-gray-400 font-medium">
+                    Last Active
+                  </th>
+                  <th class="text-center py-3 px-2 text-gray-400 font-medium">
+                    Actions
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for user in users %}
+                <tr
+                  class="border-b border-gray-700/50 hover:bg-gray-700/20 transition user-row"
+                  data-username="{{ user.username|lower }}"
+                  data-email="{{ user.email|lower }}"
+                  data-role="{% if user.is_staff %}admin{% else %}user{% endif %}"
+                  data-status="{% if user.is_active %}active{% else %}inactive{% endif %}"
+                >
+                  <td class="py-3 px-2">
+                    <div class="flex items-center space-x-3">
+                      <div
+                        class="w-8 h-8 rounded-full bg-pink-600/20 flex items-center justify-center text-pink-400 font-bold"
+                      >
+                        {{ user.username|first|upper }}
+                      </div>
+                      <div>
+                        <p class="font-medium text-white">
+                          {{ user.username }}
+                        </p>
+                        {% if not user.is_active %}
+                        <span class="text-xs text-red-400">Inactive</span>
+                        {% endif %}
+                      </div>
                     </div>
-                    <select id="roleFilter" class="px-4 py-2 bg-gray-700/50 border border-gray-600 rounded-lg text-white focus:border-pink-500 focus:outline-none transition" onchange="filterUsers()">
-                        <option value="">All Roles</option>
-                        <option value="admin">Admin</option>
-                        <option value="user">User</option>
-                    </select>
-                    <select id="statusFilter" class="px-4 py-2 bg-gray-700/50 border border-gray-600 rounded-lg text-white focus:border-pink-500 focus:outline-none transition" onchange="filterUsers()">
-                        <option value="">All Status</option>
-                        <option value="active">Active</option>
-                        <option value="inactive">Inactive</option>
-                    </select>
-                </div>
-            </div>
-
-            <!-- USERS TABLE -->
-            <div class="glass-card rounded-lg p-5 fade-up" style="animation-delay: 0.5s;">
-                <h2 class="text-lg font-bold mb-4 text-pink-400 flex items-center justify-between">
-                    <span class="flex items-center">
-                        <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"/>
+                  </td>
+                  <td class="py-3 px-2 text-gray-400">{{ user.email }}</td>
+                  <td class="py-3 px-2 text-center">
+                    {% if user.is_superuser %}
+                    <span class="stat-badge bg-purple-500/20 text-purple-400"
+                      >Superadmin</span
+                    >
+                    {% elif user.is_staff %}
+                    <span class="stat-badge bg-pink-500/20 text-pink-400"
+                      >Admin</span
+                    >
+                    {% else %}
+                    <span class="stat-badge bg-blue-500/20 text-blue-400"
+                      >User</span
+                    >
+                    {% endif %}
+                  </td>
+                  <td class="py-3 px-2 text-center text-pink-400 font-medium">
+                    {{ user.points|default:0 }}
+                  </td>
+                  <td class="py-3 px-2 text-center text-white">
+                    {{ user.completed_count|default:0 }}
+                  </td>
+                  <td class="py-3 px-2 text-center text-gray-400">
+                    {{ user.date_joined|date:"M d, Y" }}
+                  </td>
+                  <td class="py-3 px-2 text-center text-gray-400">
+                    {% if user.last_login %} {{ user.last_login|timesince }} ago
+                    {% else %} Never {% endif %}
+                  </td>
+                  <td class="py-3 px-2 text-center">
+                    <div class="flex items-center justify-center space-x-2">
+                      <button
+                        onclick="viewUserDetails('{{ user.id }}', this)"
+                        class="text-pink-400 hover:text-pink-300 transition p-1 rounded hover:bg-pink-400/10"
+                        title="View Details"
+                      >
+                        <svg
+                          class="w-4 h-4"
+                          fill="none"
+                          stroke="currentColor"
+                          viewBox="0 0 24 24"
+                        >
+                          <path
+                            stroke-linecap="round"
+                            stroke-linejoin="round"
+                            stroke-width="2"
+                            d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
+                          />
+                          <path
+                            stroke-linecap="round"
+                            stroke-linejoin="round"
+                            stroke-width="2"
+                            d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"
+                          />
                         </svg>
-                        All Users
-                    </span>
-                    <span class="text-sm text-gray-400 font-normal">Showing <span id="userCount">{{ users|length }}</span> users</span>
-                </h2>
-                <div class="overflow-x-auto">
-                    <table class="w-full text-sm" id="usersTable">
-                        <thead>
-                            <tr class="border-b border-gray-700">
-                                <th class="text-left py-3 px-2 text-gray-400 font-medium">User</th>
-                                <th class="text-left py-3 px-2 text-gray-400 font-medium">Email</th>
-                                <th class="text-center py-3 px-2 text-gray-400 font-medium">Role</th>
-                                <th class="text-center py-3 px-2 text-gray-400 font-medium">Points</th>
-                                <th class="text-center py-3 px-2 text-gray-400 font-medium">Completed</th>
-                                <th class="text-center py-3 px-2 text-gray-400 font-medium">Joined</th>
-                                <th class="text-center py-3 px-2 text-gray-400 font-medium">Last Active</th>
-                                <th class="text-center py-3 px-2 text-gray-400 font-medium">Actions</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {% for user in users %}
-                            <tr class="border-b border-gray-700/50 hover:bg-gray-700/20 transition user-row" 
-                                data-username="{{ user.username|lower }}" 
-                                data-email="{{ user.email|lower }}"
-                                data-role="{% if user.is_staff %}admin{% else %}user{% endif %}"
-                                data-status="{% if user.is_active %}active{% else %}inactive{% endif %}">
-                                <td class="py-3 px-2">
-                                    <div class="flex items-center space-x-3">
-                                        <div class="w-8 h-8 rounded-full bg-pink-600/20 flex items-center justify-center text-pink-400 font-bold">
-                                            {{ user.username|first|upper }}
-                                        </div>
-                                        <div>
-                                            <p class="font-medium text-white">{{ user.username }}</p>
-                                            {% if not user.is_active %}
-                                            <span class="text-xs text-red-400">Inactive</span>
-                                            {% endif %}
-                                        </div>
-                                    </div>
-                                </td>
-                                <td class="py-3 px-2 text-gray-400">{{ user.email }}</td>
-                                <td class="py-3 px-2 text-center">
-                                    {% if user.is_superuser %}
-                                        <span class="stat-badge bg-purple-500/20 text-purple-400">Superadmin</span>
-                                    {% elif user.is_staff %}
-                                        <span class="stat-badge bg-pink-500/20 text-pink-400">Admin</span>
-                                    {% else %}
-                                        <span class="stat-badge bg-blue-500/20 text-blue-400">User</span>
-                                    {% endif %}
-                                </td>
-                                <td class="py-3 px-2 text-center text-pink-400 font-medium">{{ user.points|default:0 }}</td>
-                                <td class="py-3 px-2 text-center text-white">{{ user.completed_count|default:0 }}</td>
-                                <td class="py-3 px-2 text-center text-gray-400">{{ user.date_joined|date:"M d, Y" }}</td>
-                                <td class="py-3 px-2 text-center text-gray-400">
-                                    {% if user.last_login %}
-                                        {{ user.last_login|timesince }} ago
-                                    {% else %}
-                                        Never
-                                    {% endif %}
-                                </td>
-                                <td class="py-3 px-2 text-center">
-                                    <div class="flex items-center justify-center space-x-2">
-                                        <a href="#" class="text-pink-400 hover:text-pink-300 transition" title="View Details">
-                                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
-                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
-                                            </svg>
-                                        </a>
-                                        <button onclick="editUser('{{ user.id }}')" class="text-blue-400 hover:text-blue-300 transition" title="Edit User">
-                                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
-                                            </svg>
-                                        </button>
-                                        <button onclick="confirmDelete('{{ user.id }}', '{{ user.username }}')" class="text-red-400 hover:text-red-300 transition" title="Delete User">
-                                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
-                                            </svg>
-                                        </button>
-                                    </div>
-                                </td>
-                            </tr>
-                            {% endfor %}
-                        </tbody>
-                    </table>
-                </div>
-            </div>
+                      </button>
+                      <button
+                        onclick="editUser('{{ user.id }}', this)"
+                        class="text-blue-400 hover:text-blue-300 transition p-1 rounded hover:bg-blue-400/10"
+                        title="Edit User"
+                      >
+                        <svg
+                          class="w-4 h-4"
+                          fill="none"
+                          stroke="currentColor"
+                          viewBox="0 0 24 24"
+                        >
+                          <path
+                            stroke-linecap="round"
+                            stroke-linejoin="round"
+                            stroke-width="2"
+                            d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
+                          />
+                        </svg>
+                      </button>
+                      <!-- DELETE BUTTON -->
+                      <button
+                        onclick="initDelete('{{ user.id }}', '{{ user.username }}')"
+                        class="text-red-400 hover:text-red-300 transition p-1 rounded hover:bg-red-400/10"
+                        title="Delete User"
+                      >
+                        <svg
+                          class="w-4 h-4"
+                          fill="none"
+                          stroke="currentColor"
+                          viewBox="0 0 24 24"
+                        >
+                          <path
+                            stroke-linecap="round"
+                            stroke-linejoin="round"
+                            stroke-width="2"
+                            d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+                          />
+                        </svg>
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </main>
 
-        </main>
+      <!-- FOOTER -->
+      <footer
+        class="bg-gray-800/80 backdrop-blur border-t border-gray-700 px-6 py-3"
+      >
+        <div class="flex justify-between items-center text-xs text-gray-400">
+          <p>© 2025 CTF Academy • User Management</p>
+          <p>Last updated: <span id="lastUpdate"></span></p>
+        </div>
+      </footer>
+    </div>
 
-        <!-- FOOTER -->
-        <footer class="bg-gray-800/80 backdrop-blur border-t border-gray-700 px-6 py-3">
-            <div class="flex justify-between items-center text-xs text-gray-400">
-                <p>© 2025 CTF Academy • User Management</p>
-                <p>Last updated: <span id="lastUpdate"></span></p>
+    <!-- USER DETAILS MODAL (High Z-Index) -->
+    <div
+      id="userDetailsModal"
+      class="fixed inset-0 bg-black bg-opacity-70 backdrop-blur-sm flex items-center justify-center z-[3000] hidden transition-opacity"
+    >
+      <div
+        class="glass-card rounded-lg p-6 w-full max-w-2xl mx-4 transform transition-all scale-100"
+      >
+        <div class="flex justify-between items-center mb-4">
+          <h3 class="text-xl font-bold text-pink-400">User Details</h3>
+          <button
+            onclick="closeModal('userDetailsModal')"
+            class="text-gray-400 hover:text-white transition"
+          >
+            <svg
+              class="w-6 h-6"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                d="M6 18L18 6M6 6l12 12"
+              />
+            </svg>
+          </button>
+        </div>
+        <div id="userDetailsContent" class="space-y-4">
+          <!-- User details will be loaded here -->
+        </div>
+      </div>
+    </div>
+
+    <!-- IMPROVED EDIT USER MODAL -->
+    <div
+      id="editUserModal"
+      class="fixed inset-0 bg-black bg-opacity-70 backdrop-blur-sm flex items-center justify-center z-[3000] hidden transition-opacity"
+    >
+      <div
+        class="glass-card rounded-xl p-0 w-full max-w-lg mx-4 transform transition-all scale-100 border border-gray-700 overflow-hidden shadow-2xl"
+      >
+        <!-- Modal Header -->
+        <div
+          class="px-6 py-4 border-b border-gray-700 bg-gray-800/50 flex justify-between items-center"
+        >
+          <div>
+            <h3 class="text-xl font-bold text-blue-400">Edit User Profile</h3>
+            <p class="text-xs text-gray-400 mt-0.5">
+              Update account information and permissions
+            </p>
+          </div>
+          <button
+            onclick="closeModal('editUserModal')"
+            class="text-gray-400 hover:text-white transition bg-gray-700/50 p-1.5 rounded-lg hover:bg-gray-600"
+          >
+            <svg
+              class="w-5 h-5"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                d="M6 18L18 6M6 6l12 12"
+              />
+            </svg>
+          </button>
+        </div>
+
+        <!-- Modal Body -->
+        <form id="editUserForm" class="p-6 space-y-6">
+          <input type="hidden" id="editUserId" name="user_id" />
+
+          <!-- Account Section -->
+          <div class="space-y-4">
+            <h4 class="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">
+              Account Details
+            </h4>
+            <div class="grid grid-cols-1 gap-5">
+              <div>
+                <label class="block text-sm font-medium text-gray-300 mb-2"
+                  >Username</label
+                >
+                <input
+                  type="text"
+                  id="editUsername"
+                  name="username"
+                  class="w-full px-3 py-2.5 bg-gray-800/50 border border-gray-600 rounded-lg text-white focus:border-blue-500 focus:ring-1 focus:ring-blue-500 focus:outline-none transition placeholder-gray-500 mb-3"
+                />
+              </div>
+              <div>
+                <label class="block text-sm font-medium text-gray-300 mb-2"
+                  >Email Address</label
+                >
+                <input
+                  type="email"
+                  id="editEmail"
+                  name="email"
+                  class="w-full px-3 py-2.5 bg-gray-800/50 border border-gray-600 rounded-lg text-white focus:border-blue-500 focus:ring-1 focus:ring-blue-500 focus:outline-none transition placeholder-gray-500"
+                />
+              </div>
             </div>
-        </footer>
+          </div>
+
+          <hr class="border-gray-700/50 my-2" />
+
+          <!-- Personal Info Section -->
+          <div class="space-y-4">
+            <h4 class="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">
+              Personal Information
+            </h4>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+              <div>
+                <label class="block text-sm font-medium text-gray-300 mb-2"
+                  >First Name</label
+                >
+                <input
+                  type="text"
+                  id="editFirstName"
+                  name="first_name"
+                  class="w-full px-3 py-2.5 bg-gray-800/50 border border-gray-600 rounded-lg text-white focus:border-blue-500 focus:ring-1 focus:ring-blue-500 focus:outline-none transition placeholder-gray-500"
+                />
+              </div>
+              <div>
+                <label class="block text-sm font-medium text-gray-300 mb-2"
+                  >Last Name</label
+                >
+                <input
+                  type="text"
+                  id="editLastName"
+                  name="last_name"
+                  class="w-full px-3 py-2.5 bg-gray-800/50 border border-gray-600 rounded-lg text-white focus:border-blue-500 focus:ring-1 focus:ring-blue-500 focus:outline-none transition placeholder-gray-500"
+                />
+              </div>
+            </div>
+          </div>
+
+          <!-- Status Toggle -->
+          <div
+            class="flex items-center justify-between bg-gray-800/30 p-3 rounded-lg border border-gray-700/50 mt-2"
+          >
+            <div>
+              <span class="block text-sm font-medium text-white">Account Status</span>
+              <span class="text-xs text-gray-400">User can log in to the platform</span>
+            </div>
+            <label class="inline-flex relative items-center cursor-pointer">
+              <input
+                type="checkbox"
+                id="editIsActive"
+                name="is_active"
+                class="sr-only peer"
+              />
+              <div
+                class="w-11 h-6 bg-gray-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"
+              ></div>
+            </label>
+          </div>
+
+          <!-- Actions -->
+          <div class="flex justify-end space-x-3 pt-2">
+            <button
+              type="button"
+              onclick="closeModal('editUserModal')"
+              class="px-5 py-2.5 bg-gray-700 hover:bg-gray-600 rounded-lg transition text-sm font-medium text-gray-200"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              id="saveUserBtn"
+              class="px-5 py-2.5 bg-blue-600 hover:bg-blue-500 rounded-lg transition text-sm font-medium text-white shadow-lg shadow-blue-900/50 flex items-center"
+            >
+              Save Changes
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <!-- CUSTOM CONFIRMATION MODAL - Force Resize -->
+    <div
+      id="confirmationModal"
+      class="fixed inset-0 bg-black bg-opacity-70 backdrop-blur-sm flex items-center justify-center z-[3000] hidden p-4"
+    >
+      <div
+        class="glass-card rounded-lg p-5 border-red-500/50 shadow-red-900/20 shadow-xl"
+        style="width: 320px"
+      >
+        <div class="flex items-start space-x-3 mb-3">
+          <div
+            class="p-1.5 bg-red-500/20 rounded-full text-red-400 flex-shrink-0 mt-0.5"
+          >
+            <svg
+              class="w-5 h-5"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
+              />
+            </svg>
+          </div>
+          <div class="flex-grow">
+            <h3 class="text-base font-bold text-white mb-2">Delete User</h3>
+            <p
+              id="confirmationMessage"
+              class="text-gray-300 text-sm leading-relaxed break-words"
+            ></p>
+            <p class="text-red-400 text-xs italic mt-2">
+              This action cannot be undone
+            </p>
+          </div>
+        </div>
+        <div class="flex justify-end space-x-2 mt-4">
+          <button
+            onclick="closeModal('confirmationModal')"
+            class="px-4 py-2 bg-gray-700 hover:bg-gray-600 rounded text-sm transition flex-1"
+          >
+            Cancel
+          </button>
+          <button
+            id="confirmActionBtn"
+            class="px-4 py-2 bg-red-600 hover:bg-red-500 rounded text-sm transition flex-1"
+          >
+            Delete
+          </button>
+        </div>
+      </div>
     </div>
 
     <script>
-        document.getElementById('lastUpdate').textContent = new Date().toLocaleString();
+      document.getElementById("lastUpdate").textContent =
+        new Date().toLocaleString();
 
-        function filterUsers() {
-            const searchTerm = document.getElementById('searchInput').value.toLowerCase();
-            const roleFilter = document.getElementById('roleFilter').value.toLowerCase();
-            const statusFilter = document.getElementById('statusFilter').value.toLowerCase();
-            const rows = document.querySelectorAll('.user-row');
-            let visibleCount = 0;
+      // SPINNER SVG
+      const spinnerSvg = `
+        <svg class="animate-spin h-4 w-4 text-current" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+        </svg>
+    `;
 
-            rows.forEach(row => {
-                const username = row.dataset.username;
-                const email = row.dataset.email;
-                const role = row.dataset.role;
-                const status = row.dataset.status;
+      function getCSRFToken() {
+        const csrfToken = document.querySelector("[name=csrfmiddlewaretoken]");
+        return csrfToken ? csrfToken.value : "";
+      }
 
-                const matchesSearch = username.includes(searchTerm) || email.includes(searchTerm);
-                const matchesRole = !roleFilter || role === roleFilter;
-                const matchesStatus = !statusFilter || status === statusFilter;
+      // --- NOTIFICATION SYSTEM ---
+      function showNotification(message, type = "success") {
+        const container = document.getElementById("toast-container");
+        const toast = document.createElement("div");
 
-                if (matchesSearch && matchesRole && matchesStatus) {
-                    row.style.display = '';
-                    visibleCount++;
-                } else {
-                    row.style.display = 'none';
-                }
-            });
+        const borderColor =
+          type === "success" ? "border-green-500/50" : "border-red-500/50";
+        const bgColor =
+          type === "success" ? "bg-green-900/80" : "bg-red-900/80";
+        const iconColor =
+          type === "success" ? "text-green-400" : "text-red-400";
+        const iconPath =
+          type === "success"
+            ? "M5 13l4 4L19 7"
+            : "M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z";
 
-            document.getElementById('userCount').textContent = visibleCount;
+        toast.className = `glass-card ${bgColor} ${borderColor} p-4 rounded-lg shadow-lg flex items-start space-x-3 pointer-events-auto min-w-[300px] toast-enter`;
+
+        toast.innerHTML = `
+            <div class="${iconColor} flex-shrink-0 mt-0.5">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="${iconPath}"/>
+                </svg>
+            </div>
+            <div class="flex-grow">
+                <p class="text-sm font-medium text-white">${message}</p>
+            </div>
+            <button onclick="this.parentElement.remove()" class="text-gray-400 hover:text-white">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                </svg>
+            </button>
+        `;
+
+        container.appendChild(toast);
+        setTimeout(() => {
+          toast.classList.remove("toast-enter");
+          toast.classList.add("toast-exit");
+          setTimeout(() => toast.remove(), 300);
+        }, 3500);
+      }
+
+      // --- CONFIRMATION SYSTEM (Hard Delete Logic) ---
+      let pendingDeleteId = null;
+
+      function initDelete(userId, username) {
+        pendingDeleteId = userId;
+        const modal = document.getElementById("confirmationModal");
+        const message = document.getElementById("confirmationMessage");
+        const confirmBtn = document.getElementById("confirmActionBtn");
+
+        // Shorter, more concise message
+        message.textContent = `Permanently delete "${username}"? This will remove all their data and progress.`;
+
+        confirmBtn.onclick = () => performDelete(userId);
+
+        showModal("confirmationModal");
+      }
+
+      async function performDelete(userId) {
+        const confirmBtn = document.getElementById("confirmActionBtn");
+        const originalText = confirmBtn.innerHTML;
+
+        confirmBtn.innerHTML = `
+            <svg class="animate-spin -ml-1 mr-2 h-4 w-4 text-white inline" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+            </svg> Deleting...
+        `;
+        confirmBtn.disabled = true;
+
+        const result = await handleApiCall(
+          `/api/admin/users/${userId}/delete/`,
+          {
+            method: "POST",
+          }
+        );
+
+        if (result.success) {
+          closeModal("confirmationModal");
+          // Updated Success Message
+          showNotification(
+            result.data.message || "User deleted permanently",
+            "success"
+          );
+          setTimeout(() => location.reload(), 1000);
+        } else {
+          confirmBtn.innerHTML = originalText;
+          confirmBtn.disabled = false;
+          showNotification("Error deleting user: " + result.error, "error");
+          closeModal("confirmationModal");
         }
+      }
 
-        function exportUsers() {
-            window.location.href = '/api/admin/export/?type=users';
-        }
+      // --- FILTER LOGIC UPDATED (Removed Role Filter) ---
+      function filterUsers() {
+        const searchTerm = document
+          .getElementById("searchInput")
+          .value.toLowerCase();
+        
+        // Removed Role Filter variable
 
-        function editUser(userId) {
-            // Add your edit user logic here
-            alert(`Edit user ${userId}`);
-        }
+        const statusFilter = document
+          .getElementById("statusFilter")
+          .value.toLowerCase();
+        
+        const rows = document.querySelectorAll(".user-row");
+        let visibleCount = 0;
 
-        function confirmDelete(userId, username) {
-            if (confirm(`Are you sure you want to delete user "${username}"? This action cannot be undone.`)) {
-                // Add your delete user logic here
-                alert(`Delete user ${userId}`);
+        rows.forEach((row) => {
+          const username = row.dataset.username;
+          const email = row.dataset.email;
+          // const role = row.dataset.role; // Role data still exists but we don't filter by it
+          const status = row.dataset.status;
+
+          const matchesSearch =
+            username.includes(searchTerm) || email.includes(searchTerm);
+          
+          // Removed matchesRole logic
+          const matchesStatus = !statusFilter || status === statusFilter;
+
+          if (matchesSearch && matchesStatus) {
+            row.style.display = "";
+            visibleCount++;
+          } else {
+            row.style.display = "none";
+          }
+        });
+
+        document.getElementById("userCount").textContent = visibleCount;
+      }
+
+      function exportUsers() {
+        window.location.href = '{% url "admin_export_data" %}?type=users';
+      }
+
+      function closeModal(modalId) {
+        document.getElementById(modalId).classList.add("hidden");
+      }
+
+      function showModal(modalId) {
+        document.getElementById(modalId).classList.remove("hidden");
+      }
+
+      async function handleApiCall(url, options = {}) {
+    try {
+        const response = await fetch(url, {
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': getCSRFToken(),
+                ...options.headers
+            },
+            ...options
+        });
+
+        // Check if response is JSON before parsing
+        const contentType = response.headers.get('content-type');
+        
+        let data;
+        if (contentType && contentType.includes('application/json')) {
+            data = await response.json();
+        } else {
+            // If not JSON, get the text and create a simple success response
+            const text = await response.text();
+            if (response.ok) {
+                return { 
+                    success: true, 
+                    data: { 
+                        message: text || 'Operation completed successfully' 
+                    } 
+                };
+            } else {
+                throw new Error(text || `HTTP error! status: ${response.status}`);
             }
         }
-    </script>
+        
+        if (!response.ok) {
+            throw new Error(data.message || `HTTP error! status: ${response.status}`);
+        }
+        
+        return { success: true, data };
+    } catch (error) {
+        console.error('API call failed:', error);
+        return { success: false, error: error.message || 'Network error occurred' };
+    }
+}
 
-</body>
+      async function viewUserDetails(userId, btnElement) {
+        const originalContent = btnElement.innerHTML;
+        btnElement.innerHTML = spinnerSvg;
+        btnElement.disabled = true;
+        const result = await handleApiCall(`/api/admin/users/${userId}/`);
+        btnElement.innerHTML = originalContent;
+        btnElement.disabled = false;
+
+        if (result.success) {
+          const user = result.data.user;
+          const content = document.getElementById("userDetailsContent");
+          content.innerHTML = `
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                        <h4 class="text-sm font-medium text-gray-400">Basic Information</h4>
+                        <div class="mt-2 space-y-2">
+                            <p><strong class="text-gray-300">Username:</strong> ${
+                              user.username
+                            }</p>
+                            <p><strong class="text-gray-300">Email:</strong> ${
+                              user.email
+                            }</p>
+                            <p><strong class="text-gray-300">Name:</strong> ${
+                              user.first_name || "N/A"
+                            } ${user.last_name || ""}</p>
+                            <p><strong class="text-gray-300">Status:</strong> <span class="${
+                              user.is_active ? "text-green-400" : "text-red-400"
+                            }">${
+            user.is_active ? "Active" : "Inactive"
+          }</span></p>
+                            <p><strong class="text-gray-300">Role:</strong> <span class="${
+                              user.is_superuser
+                                ? "text-purple-400"
+                                : user.is_staff
+                                ? "text-pink-400"
+                                : "text-blue-400"
+                            }">${
+            user.is_superuser ? "Superadmin" : user.is_staff ? "Admin" : "User"
+          }</span></p>
+                        </div>
+                    </div>
+                    <div>
+                        <h4 class="text-sm font-medium text-gray-400">Statistics</h4>
+                        <div class="mt-2 space-y-2">
+                            <p><strong class="text-gray-300">Total Points:</strong> <span class="text-pink-400">${
+                              user.total_points
+                            }</span></p>
+                            <p><strong class="text-gray-300">Completed Challenges:</strong> ${
+                              user.completed_count
+                            }</p>
+                            <p><strong class="text-gray-300">Favorites:</strong> ${
+                              user.favorites_count
+                            }</p>
+                            <p><strong class="text-gray-300">Member Since:</strong> ${new Date(
+                              user.date_joined
+                            ).toLocaleDateString()}</p>
+                            <p><strong class="text-gray-300">Last Login:</strong> ${
+                              user.last_login
+                                ? new Date(user.last_login).toLocaleString()
+                                : "Never"
+                            }</p>
+                        </div>
+                    </div>
+                </div>
+                ${
+                  user.recent_activity && user.recent_activity.length > 0
+                    ? `
+                <div>
+                    <h4 class="text-sm font-medium text-gray-400 mb-2">Recent Activity</h4>
+                    <div class="space-y-1 max-h-40 overflow-y-auto">
+                        ${user.recent_activity
+                          .map(
+                            (activity) => `
+                            <div class="flex justify-between text-sm py-1 border-b border-gray-700/50">
+                                <span class="truncate flex-1">${activity.challenge_title}</span>
+                                <span class="text-gray-400 ml-2 flex-shrink-0">${activity.status}</span>
+                            </div>
+                        `
+                          )
+                          .join("")}
+                    </div>
+                </div>
+                `
+                    : '<p class="text-gray-400 text-sm">No recent activity</p>'
+                }
+            `;
+          showModal("userDetailsModal");
+        } else {
+          showNotification(
+            "Error loading user details: " + result.error,
+            "error"
+          );
+        }
+      }
+
+      async function editUser(userId, btnElement) {
+        const originalContent = btnElement.innerHTML;
+        btnElement.innerHTML = spinnerSvg;
+        btnElement.disabled = true;
+        const result = await handleApiCall(`/api/admin/users/${userId}/`);
+        btnElement.innerHTML = originalContent;
+        btnElement.disabled = false;
+
+        if (result.success) {
+          const user = result.data.user;
+          document.getElementById("editUserId").value = user.id;
+          document.getElementById("editUsername").value = user.username;
+          document.getElementById("editEmail").value = user.email;
+          document.getElementById("editFirstName").value =
+            user.first_name || "";
+          document.getElementById("editLastName").value = user.last_name || "";
+          document.getElementById("editIsActive").checked = user.is_active;
+          showModal("editUserModal");
+        } else {
+          showNotification("Error loading user data: " + result.error, "error");
+        }
+      }
+
+      document
+        .getElementById("editUserForm")
+        .addEventListener("submit", async function (e) {
+          e.preventDefault();
+          const saveBtn = document.getElementById("saveUserBtn");
+          const originalBtnText = saveBtn.innerHTML;
+          const userId = document.getElementById("editUserId").value;
+          const formData = {
+            username: document.getElementById("editUsername").value,
+            email: document.getElementById("editEmail").value,
+            first_name: document.getElementById("editFirstName").value,
+            last_name: document.getElementById("editLastName").value,
+            is_active: document.getElementById("editIsActive").checked,
+          };
+
+          if (!formData.username.trim()) {
+            showNotification("Username is required", "error");
+            return;
+          }
+          if (!formData.email.trim()) {
+            showNotification("Email is required", "error");
+            return;
+          }
+
+          saveBtn.innerHTML = `
+            <svg class="animate-spin -ml-1 mr-2 h-4 w-4 text-white inline" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+            </svg> Saving...
+        `;
+          saveBtn.disabled = true;
+
+          const result = await handleApiCall(
+            `/api/admin/users/${userId}/update/`,
+            {
+              method: "POST",
+              body: JSON.stringify(formData),
+            }
+          );
+
+          if (result.success) {
+            closeModal("editUserModal");
+            showNotification(
+              result.data.message || "User updated successfully",
+              "success"
+            );
+            setTimeout(() => location.reload(), 1000);
+          } else {
+            saveBtn.innerHTML = originalBtnText;
+            saveBtn.disabled = false;
+            showNotification("Error updating user: " + result.error, "error");
+          }
+        });
+
+      document.addEventListener("click", function (e) {
+        if (e.target.id === "userDetailsModal") closeModal("userDetailsModal");
+        if (e.target.id === "editUserModal") closeModal("editUserModal");
+        if (e.target.id === "confirmationModal")
+          closeModal("confirmationModal");
+      });
+
+      document.addEventListener("keydown", function (e) {
+        if (e.key === "Escape") {
+          closeModal("userDetailsModal");
+          closeModal("editUserModal");
+          closeModal("confirmationModal");
+        }
+      });
+    </script>
+  </body>
 </html>

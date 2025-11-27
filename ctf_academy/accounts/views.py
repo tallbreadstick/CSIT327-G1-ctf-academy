@@ -1250,12 +1250,11 @@ def admin_user_delete(request, user_id):
             'message': 'Cannot deactivate admin users'
         }, status=400)
     
-    target_user.is_active = False
-    target_user.save()
+    target_user.delete() 
     
     return JsonResponse({
         'ok': True,
-        'message': f'User {target_user.username} deactivated'
+        'message': f'User {target_user.username} deleted.'
     })
 
 

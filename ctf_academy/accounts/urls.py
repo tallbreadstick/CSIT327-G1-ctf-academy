@@ -24,6 +24,7 @@ from .views import (
     # ADMIN VIEWS
     admin_users_page,
     admin_users_list,
+    admin_user_detail,  # ADD THIS IMPORT
     admin_user_update,
     admin_user_delete,
     admin_user_progress,
@@ -70,9 +71,12 @@ urlpatterns = [
     # User Management
     path("admin/users/", admin_users_page, name="admin_users_page"),
     path("api/admin/users/", admin_users_list, name="admin_users_list"),
+    path("api/admin/users/<int:user_id>/", admin_user_detail, name="admin_user_detail"),  # ADD THIS LINE
     path("api/admin/users/<int:user_id>/update/", admin_user_update, name="admin_user_update"),
     path("api/admin/users/<int:user_id>/delete/", admin_user_delete, name="admin_user_delete"),
+    
     path("api/admin/users/<int:user_id>/progress/", admin_user_progress, name="admin_user_progress"),
+    
     
     # Analytics (View Only)
     path("api/admin/challenges/<int:challenge_id>/analytics/", admin_challenge_analytics, name="admin_challenge_analytics"),
