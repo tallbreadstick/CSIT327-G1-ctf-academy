@@ -26,9 +26,19 @@ from django.conf import settings
 from django.http import JsonResponse
 import json
 
+
+from django.db.models import Count, Sum, Q
+from django.db.models.functions import TruncDate
+from datetime import timedelta
+from django.core.paginator import Paginator
+from django.utils import timezone
+
+
 # --- NEW VIEW TO GENERATE TOKEN WITH CUSTOM PAYLOAD ---
 class MyTokenObtainPairView(TokenObtainPairView):
     serializer_class = MyTokenObtainPairSerializer
+
+
 
 
 # --- REMOVED THE OLD LoginView(APIView) CLASS ---
@@ -132,10 +142,6 @@ def logout_page(request):
 def is_admin(user):
     return user.is_superuser
 
-@login_required
-@user_passes_test(is_admin)
-def admin_dashboard_page(request):
-    return render(request, "accounts/admin_dashboard.html")
 
 
 @login_required
@@ -906,3 +912,483 @@ Be helpful, encouraging, and educational. Keep responses concise and actionable.
             'error': f'An error occurred: {str(e)}',
             'success': False
         }, status=500)
+        
+
+# ============================================================================
+# 1. ENHANCED ADMIN DASHBOARD
+# ============================================================================
+
+@login_required
+@user_passes_test(is_admin)
+def admin_dashboard_page(request):
+    """Enhanced admin dashboard with comprehensive analytics"""
+    
+    # === USER STATISTICS ===
+    total_users = User.objects.filter(is_active=True).count()
+    new_users_this_month = User.objects.filter(
+        date_joined__gte=timezone.now() - timedelta(days=30)
+    ).count()
+    
+    # Top performers (most points)
+    top_users = []
+    for user in User.objects.filter(is_active=True)[:10]:
+        completed = ChallengeProgress.objects.filter(
+            user=user, 
+            status=ChallengeProgress.Status.COMPLETED
+        )
+        total_points = completed.aggregate(
+            points=Sum('challenge__points')
+        )['points'] or 0
+        
+        top_users.append({
+            'username': user.username,
+            'email': user.email,
+            'points': total_points,
+            'completed_count': completed.count(),
+            'date_joined': user.date_joined
+        })
+    
+    top_users.sort(key=lambda x: x['points'], reverse=True)
+    top_users = top_users[:5]
+    
+    # === CHALLENGE STATISTICS ===
+    total_challenges = Challenge.objects.filter(is_active=True).count()
+    
+    # Challenge completion rates
+    challenges_with_stats = []
+    for challenge in Challenge.objects.filter(is_active=True):
+        progress_counts = ChallengeProgress.objects.filter(
+            challenge=challenge
+        ).values('status').annotate(count=Count('id'))
+        
+        completed = 0
+        in_progress = 0
+        attempted = 0
+        
+        for p in progress_counts:
+            if p['status'] == ChallengeProgress.Status.COMPLETED:
+                completed = p['count']
+            elif p['status'] == ChallengeProgress.Status.IN_PROGRESS:
+                in_progress = p['count']
+            elif p['status'] == ChallengeProgress.Status.ATTEMPTED:
+                attempted = p['count']
+        
+        total_attempts = completed + in_progress + attempted
+        completion_rate = (completed / total_attempts * 100) if total_attempts > 0 else 0
+        
+        challenges_with_stats.append({
+            'id': challenge.id,
+            'title': challenge.title,
+            'slug': challenge.slug,
+            'category': challenge.category.name,
+            'difficulty': challenge.difficulty,
+            'points': challenge.points,
+            'completed': completed,
+            'in_progress': in_progress,
+            'attempted': attempted,
+            'completion_rate': round(completion_rate, 1)
+        })
+    
+    # Sort by completion rate
+    challenges_with_stats.sort(key=lambda x: x['completion_rate'], reverse=True)
+    
+    # Most popular (favorited) challenges
+    popular_challenges = Challenge.objects.annotate(
+        fav_count=Count('favorited_by')
+    ).order_by('-fav_count')[:5]
+    
+    # === PROGRESS ANALYTICS ===
+    # Completion trend (last 30 days)
+    thirty_days_ago = timezone.now() - timedelta(days=30)
+    daily_completions = ChallengeProgress.objects.filter(
+        status=ChallengeProgress.Status.COMPLETED,
+        completed_at__gte=thirty_days_ago
+    ).annotate(
+        day=TruncDate('completed_at')
+    ).values('day').annotate(
+        count=Count('id')
+    ).order_by('day')
+    
+    # Format for chart
+    completion_trend = [
+        {'date': item['day'].strftime('%Y-%m-%d'), 'count': item['count']}
+        for item in daily_completions
+    ]
+    
+    # === DIFFICULTY DISTRIBUTION ===
+    difficulty_stats = Challenge.objects.filter(
+        is_active=True
+    ).values('difficulty').annotate(
+        count=Count('id')
+    ).order_by('difficulty')
+    
+    # === RECENT ACTIVITY ===
+    recent_progress = ChallengeProgress.objects.select_related(
+        'user', 'challenge'
+    ).order_by('-updated_at')[:10]
+    
+    recent_activities = []
+    for progress in recent_progress:
+        recent_activities.append({
+            'user': progress.user.username,
+            'challenge': progress.challenge.title,
+            'status': progress.get_status_display(),
+            'timestamp': progress.updated_at,
+            'points': progress.challenge.points if progress.status == ChallengeProgress.Status.COMPLETED else 0
+        })
+    
+    context = {
+        'total_users': total_users,
+        'new_users_this_month': new_users_this_month,
+        'total_challenges': total_challenges,
+        'top_users': top_users,
+        'challenges_with_stats': challenges_with_stats[:10],
+        'popular_challenges': popular_challenges,
+        'completion_trend': completion_trend,
+        'difficulty_stats': list(difficulty_stats),
+        'recent_activities': recent_activities,
+    }
+    
+    return render(request, "accounts/admin_dashboard.html", context)
+
+
+# ============================================================================
+# 2. USER MANAGEMENT
+# ============================================================================
+
+@login_required
+@user_passes_test(is_admin)
+def admin_users_page(request):
+    """Render the user management page"""
+    return render(request, "accounts/admin_users.html")
+
+
+@login_required
+@user_passes_test(is_admin)
+def admin_users_list(request):
+    """API endpoint to list all users with pagination and search"""
+    search_query = request.GET.get('q', '').strip()
+    page = int(request.GET.get('page', 1))
+    
+    users_qs = User.objects.filter(is_active=True)
+    
+    if search_query:
+        users_qs = users_qs.filter(
+            Q(username__icontains=search_query) |
+            Q(email__icontains=search_query) |
+            Q(first_name__icontains=search_query) |
+            Q(last_name__icontains=search_query)
+        )
+    
+    paginator = Paginator(users_qs.order_by('-date_joined'), 20)
+    page_obj = paginator.get_page(page)
+    
+    users_data = []
+    for user in page_obj:
+        completed = ChallengeProgress.objects.filter(
+            user=user,
+            status=ChallengeProgress.Status.COMPLETED
+        ).count()
+        
+        favorites = Favorite.objects.filter(user=user).count()
+        
+        total_points = ChallengeProgress.objects.filter(
+            user=user,
+            status=ChallengeProgress.Status.COMPLETED
+        ).aggregate(points=Sum('challenge__points'))['points'] or 0
+        
+        users_data.append({
+            'id': user.id,
+            'username': user.username,
+            'email': user.email,
+            'first_name': user.first_name,
+            'last_name': user.last_name,
+            'date_joined': user.date_joined.isoformat(),
+            'is_active': user.is_active,
+            'completed_challenges': completed,
+            'favorites': favorites,
+            'total_points': total_points
+        })
+    
+    return JsonResponse({
+        'users': users_data,
+        'page': page,
+        'total_pages': paginator.num_pages,
+        'total_count': paginator.count
+    })
+
+
+@login_required
+@user_passes_test(is_admin)
+@csrf_exempt
+def admin_user_update(request, user_id):
+    """Update user details"""
+    if request.method != 'POST':
+        return HttpResponseBadRequest("POST required")
+    
+    target_user = get_object_or_404(User, id=user_id)
+    
+    try:
+        data = json.loads(request.body.decode('utf-8'))
+        
+        # Update fields
+        if 'username' in data:
+            target_user.username = data['username']
+        if 'email' in data:
+            target_user.email = data['email']
+        if 'first_name' in data:
+            target_user.first_name = data['first_name']
+        if 'last_name' in data:
+            target_user.last_name = data['last_name']
+        if 'is_active' in data:
+            target_user.is_active = data['is_active']
+        
+        target_user.save()
+        
+        return JsonResponse({
+            'ok': True,
+            'message': f'User {target_user.username} updated successfully'
+        })
+    
+    except Exception as e:
+        return JsonResponse({
+            'ok': False,
+            'message': f'Error: {str(e)}'
+        }, status=500)
+
+
+@login_required
+@user_passes_test(is_admin)
+@csrf_exempt
+def admin_user_delete(request, user_id):
+    """Deactivate a user"""
+    if request.method != 'POST':
+        return HttpResponseBadRequest("POST required")
+    
+    target_user = get_object_or_404(User, id=user_id)
+    
+    if target_user.is_superuser:
+        return JsonResponse({
+            'ok': False,
+            'message': 'Cannot deactivate admin users'
+        }, status=400)
+    
+    target_user.is_active = False
+    target_user.save()
+    
+    return JsonResponse({
+        'ok': True,
+        'message': f'User {target_user.username} deactivated'
+    })
+
+
+# ============================================================================
+# 3. CHALLENGE ANALYTICS (VIEW ONLY - NO CRUD)
+# ============================================================================
+
+@login_required
+@user_passes_test(is_admin)
+def admin_challenge_analytics(request, challenge_id):
+    """Get detailed analytics for a specific challenge"""
+    challenge = get_object_or_404(Challenge, id=challenge_id)
+    
+    # Progress breakdown
+    progress_counts = ChallengeProgress.objects.filter(
+        challenge=challenge
+    ).values('status').annotate(count=Count('id'))
+    
+    status_breakdown = {}
+    for item in progress_counts:
+        status_breakdown[item['status']] = item['count']
+    
+    # Average completion time
+    completed_progress = ChallengeProgress.objects.filter(
+        challenge=challenge,
+        status=ChallengeProgress.Status.COMPLETED,
+        completed_at__isnull=False
+    )
+    
+    completion_times = []
+    for p in completed_progress:
+        if p.started_at and p.completed_at:
+            delta = p.completed_at - p.started_at
+            completion_times.append(delta.total_seconds() / 60)  # minutes
+    
+    avg_time = sum(completion_times) / len(completion_times) if completion_times else 0
+    
+    # Favorite count
+    favorite_count = Favorite.objects.filter(challenge=challenge).count()
+    
+    return JsonResponse({
+        'challenge': {
+            'id': challenge.id,
+            'title': challenge.title,
+            'difficulty': challenge.difficulty,
+            'points': challenge.points
+        },
+        'status_breakdown': status_breakdown,
+        'average_completion_time_minutes': round(avg_time, 2),
+        'favorite_count': favorite_count,
+        'completion_times': completion_times[:10]
+    })
+
+
+# ============================================================================
+# 4. USER PROGRESS DETAILS
+# ============================================================================
+
+@login_required
+@user_passes_test(is_admin)
+def admin_user_progress(request, user_id):
+    """Get detailed progress for a specific user"""
+    user = get_object_or_404(User, id=user_id)
+    
+    # Get all progress
+    progress_qs = ChallengeProgress.objects.filter(
+        user=user
+    ).select_related('challenge', 'challenge__category').order_by('-updated_at')
+    
+    progress_data = []
+    total_points = 0
+    
+    for progress in progress_qs:
+        challenge = progress.challenge
+        
+        # Calculate time spent if completed
+        time_spent = None
+        if progress.completed_at and progress.started_at:
+            delta = progress.completed_at - progress.started_at
+            time_spent = int(delta.total_seconds() / 60)  # minutes
+        
+        # Add points if completed
+        if progress.status == ChallengeProgress.Status.COMPLETED:
+            total_points += challenge.points
+        
+        progress_data.append({
+            'challenge_id': challenge.id,
+            'challenge_title': challenge.title,
+            'challenge_slug': challenge.slug,
+            'category': challenge.category.name,
+            'difficulty': challenge.difficulty,
+            'points': challenge.points,
+            'status': progress.status,
+            'status_display': progress.get_status_display(),
+            'started_at': progress.started_at.isoformat() if progress.started_at else None,
+            'updated_at': progress.updated_at.isoformat(),
+            'completed_at': progress.completed_at.isoformat() if progress.completed_at else None,
+            'time_spent_minutes': time_spent,
+            'last_saved_ok': progress.last_saved_ok
+        })
+    
+    # Get favorites
+    favorites = Favorite.objects.filter(user=user).select_related('challenge')
+    favorite_data = [
+        {
+            'challenge_id': fav.challenge.id,
+            'challenge_title': fav.challenge.title,
+            'created_at': fav.created_at.isoformat()
+        }
+        for fav in favorites
+    ]
+    
+    return JsonResponse({
+        'user': {
+            'id': user.id,
+            'username': user.username,
+            'email': user.email,
+            'date_joined': user.date_joined.isoformat()
+        },
+        'progress': progress_data,
+        'favorites': favorite_data,
+        'total_points': total_points,
+        'completed_count': len([p for p in progress_data if p['status'] == 'completed']),
+        'in_progress_count': len([p for p in progress_data if p['status'] == 'in_progress'])
+    })
+
+
+# ============================================================================
+# 5. CATEGORY STATISTICS
+# ============================================================================
+
+@login_required
+@user_passes_test(is_admin)
+def admin_category_stats(request):
+    """Get statistics grouped by category"""
+    categories = Category.objects.all()
+    
+    category_stats = []
+    
+    for category in categories:
+        challenges = Challenge.objects.filter(category=category, is_active=True)
+        challenge_count = challenges.count()
+        
+        # Count completions across all challenges in this category
+        total_completions = ChallengeProgress.objects.filter(
+            challenge__category=category,
+            status=ChallengeProgress.Status.COMPLETED
+        ).count()
+        
+        # Total points available in this category
+        total_points = challenges.aggregate(total=Sum('points'))['total'] or 0
+        
+        # Most popular challenge in category
+        popular_challenge = challenges.annotate(
+            completion_count=Count('progress', filter=Q(progress__status=ChallengeProgress.Status.COMPLETED))
+        ).order_by('-completion_count').first()
+        
+        category_stats.append({
+            'id': category.id,
+            'name': category.name,
+            'slug': category.slug,
+            'icon_class': category.icon_class,
+            'challenge_count': challenge_count,
+            'total_completions': total_completions,
+            'total_points': total_points,
+            'most_popular': {
+                'title': popular_challenge.title if popular_challenge else None,
+                'completions': popular_challenge.completion_count if popular_challenge else 0
+            } if popular_challenge else None
+        })
+    
+    return JsonResponse({
+        'categories': category_stats,
+        'total_categories': len(category_stats)
+    })
+
+
+# ============================================================================
+# 6. DATA EXPORT
+# ============================================================================
+
+@login_required
+@user_passes_test(is_admin)
+def admin_export_data(request):
+    """Export admin data as JSON"""
+    export_type = request.GET.get('type', 'users')
+    
+    if export_type == 'users':
+        users = User.objects.filter(is_active=True).values(
+            'id', 'username', 'email', 'date_joined', 'is_active'
+        )
+        return JsonResponse({'users': list(users)})
+    
+    elif export_type == 'challenges':
+        challenges = Challenge.objects.filter(is_active=True).values(
+            'id', 'title', 'slug', 'difficulty', 'points', 'category__name'
+        )
+        return JsonResponse({'challenges': list(challenges)})
+    
+    elif export_type == 'progress':
+        progress = ChallengeProgress.objects.select_related(
+            'user', 'challenge'
+        ).values(
+            'user__username',
+            'challenge__title',
+            'status',
+            'started_at',
+            'updated_at',
+            'completed_at'
+        )
+        return JsonResponse({'progress': list(progress)})
+    
+    return JsonResponse({'error': 'Invalid export type'}, status=400)

@@ -21,11 +21,10 @@ from django.urls import path, include
 from accounts import views
 
 urlpatterns = [
-    path("admin/", admin.site.urls),
-    
     # Define the homepage at the root URL
     path('', views.home_page, name="home"),
     
     # Include all URLs from the accounts app
     path("", include("accounts.urls")),
+    path("admin/", admin.site.urls),
 ]

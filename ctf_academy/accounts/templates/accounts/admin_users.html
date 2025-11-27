@@ -1,0 +1,433 @@
+{% load static tailwind_tags %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>User Management - CTF Academy</title>
+    <link rel="icon" type="image/png" href="{% static 'accounts/images/logo.png' %}">
+    {% tailwind_css %}
+    <style>
+        .glass-card {
+            background: rgba(31, 41, 55, 0.6);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(236, 72, 153, 0.2);
+        }
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.8);
+            z-index: 9999;
+            align-items: center;
+            justify-content: center;
+        }
+        .modal.active { display: flex; }
+    </style>
+</head>
+<body class="bg-gray-900 text-white">
+
+    <div class="container mx-auto p-6">
+        <div class="flex justify-between items-center mb-6">
+            <h1 class="text-3xl font-bold text-pink-400">User Management</h1>
+            <a href="{% url 'admin_dashboard_page' %}" class="px-4 py-2 bg-gray-700 hover:bg-gray-600 rounded-lg transition">
+                ← Back to Dashboard
+            </a>
+        </div>
+
+        <!-- Search & Filters -->
+        <div class="glass-card rounded-lg p-4 mb-6">
+            <div class="flex items-center space-x-4">
+                <input type="text" 
+                       id="searchInput" 
+                       placeholder="Search users by username, email, or name..." 
+                       class="flex-grow px-4 py-2 bg-gray-700 border border-pink-600/30 rounded-lg text-white focus:outline-none focus:border-pink-600">
+                <button onclick="searchUsers()" class="px-6 py-2 bg-pink-600 hover:bg-pink-700 rounded-lg transition">
+                    Search
+                </button>
+                <button onclick="loadUsers()" class="px-6 py-2 bg-gray-700 hover:bg-gray-600 rounded-lg transition">
+                    Refresh
+                </button>
+            </div>
+        </div>
+
+        <!-- Users Table -->
+        <div class="glass-card rounded-lg p-6">
+            <div class="overflow-x-auto">
+                <table class="w-full text-sm">
+                    <thead>
+                        <tr class="border-b border-gray-700">
+                            <th class="text-left py-3 px-4 text-gray-400">Username</th>
+                            <th class="text-left py-3 px-4 text-gray-400">Email</th>
+                            <th class="text-center py-3 px-4 text-gray-400">Status</th>
+                            <th class="text-center py-3 px-4 text-gray-400">Completed</th>
+                            <th class="text-center py-3 px-4 text-gray-400">Points</th>
+                            <th class="text-center py-3 px-4 text-gray-400">Joined</th>
+                            <th class="text-center py-3 px-4 text-gray-400">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="usersTableBody">
+                        <tr>
+                            <td colspan="7" class="text-center py-8 text-gray-400">
+                                Loading users...
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Pagination -->
+            <div id="pagination" class="mt-4 flex justify-between items-center">
+                <div class="text-sm text-gray-400">
+                    Showing <span id="showingCount">0</span> users
+                </div>
+                <div class="flex space-x-2" id="paginationButtons"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Edit User Modal -->
+    <div id="editModal" class="modal">
+        <div class="glass-card rounded-lg p-6 max-w-md w-full mx-4">
+            <h2 class="text-2xl font-bold mb-4 text-pink-400">Edit User</h2>
+            
+            <form id="editForm" onsubmit="updateUser(event)">
+                <input type="hidden" id="editUserId">
+                
+                <div class="mb-4">
+                    <label class="block text-sm font-medium mb-2">Username</label>
+                    <input type="text" 
+                           id="editUsername" 
+                           class="w-full px-4 py-2 bg-gray-700 border border-pink-600/30 rounded-lg text-white focus:outline-none focus:border-pink-600"
+                           required>
+                </div>
+
+                <div class="mb-4">
+                    <label class="block text-sm font-medium mb-2">Email</label>
+                    <input type="email" 
+                           id="editEmail" 
+                           class="w-full px-4 py-2 bg-gray-700 border border-pink-600/30 rounded-lg text-white focus:outline-none focus:border-pink-600"
+                           required>
+                </div>
+
+                <div class="mb-4">
+                    <label class="block text-sm font-medium mb-2">First Name</label>
+                    <input type="text" 
+                           id="editFirstName" 
+                           class="w-full px-4 py-2 bg-gray-700 border border-pink-600/30 rounded-lg text-white focus:outline-none focus:border-pink-600">
+                </div>
+
+                <div class="mb-4">
+                    <label class="block text-sm font-medium mb-2">Last Name</label>
+                    <input type="text" 
+                           id="editLastName" 
+                           class="w-full px-4 py-2 bg-gray-700 border border-pink-600/30 rounded-lg text-white focus:outline-none focus:border-pink-600">
+                </div>
+
+                <div class="mb-6">
+                    <label class="flex items-center space-x-2">
+                        <input type="checkbox" id="editIsActive" class="form-checkbox h-5 w-5 text-pink-600">
+                        <span class="text-sm">Account Active</span>
+                    </label>
+                </div>
+
+                <div class="flex space-x-3">
+                    <button type="submit" 
+                            class="flex-grow px-4 py-2 bg-pink-600 hover:bg-pink-700 rounded-lg transition">
+                        Save Changes
+                    </button>
+                    <button type="button" 
+                            onclick="closeModal()" 
+                            class="px-4 py-2 bg-gray-700 hover:bg-gray-600 rounded-lg transition">
+                        Cancel
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- View Progress Modal -->
+    <div id="progressModal" class="modal">
+        <div class="glass-card rounded-lg p-6 max-w-3xl w-full mx-4 max-h-[90vh] overflow-y-auto">
+            <div class="flex justify-between items-center mb-4">
+                <h2 class="text-2xl font-bold text-pink-400">User Progress</h2>
+                <button onclick="closeProgressModal()" class="text-gray-400 hover:text-white">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                    </svg>
+                </button>
+            </div>
+            
+            <div id="progressContent">
+                <p class="text-center text-gray-400">Loading progress...</p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let currentPage = 1;
+        let currentQuery = '';
+
+        document.addEventListener('DOMContentLoaded', () => {
+            loadUsers();
+        });
+
+        document.getElementById('searchInput').addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                searchUsers();
+            }
+        });
+
+        function searchUsers() {
+            currentQuery = document.getElementById('searchInput').value;
+            currentPage = 1;
+            loadUsers();
+        }
+
+        async function loadUsers(page = 1) {
+            currentPage = page;
+            const url = `/api/admin/users/?page=${page}&q=${encodeURIComponent(currentQuery)}`;
+            
+            try {
+                const response = await fetch(url);
+                const data = await response.json();
+                
+                renderUsers(data.users);
+                renderPagination(data.page, data.total_pages, data.total_count);
+                
+            } catch (error) {
+                console.error('Error loading users:', error);
+                document.getElementById('usersTableBody').innerHTML = `
+                    <tr>
+                        <td colspan="7" class="text-center py-8 text-red-400">
+                            Error loading users. Please try again.
+                        </td>
+                    </tr>
+                `;
+            }
+        }
+
+        function renderUsers(users) {
+            const tbody = document.getElementById('usersTableBody');
+            
+            if (users.length === 0) {
+                tbody.innerHTML = `
+                    <tr>
+                        <td colspan="7" class="text-center py-8 text-gray-400">
+                            No users found.
+                        </td>
+                    </tr>
+                `;
+                return;
+            }
+
+            tbody.innerHTML = users.map(user => `
+                <tr class="border-b border-gray-700/50 hover:bg-gray-700/20 transition">
+                    <td class="py-3 px-4 text-white font-medium">${user.username}</td>
+                    <td class="py-3 px-4 text-gray-400">${user.email}</td>
+                    <td class="py-3 px-4 text-center">
+                        <span class="px-2 py-1 rounded-full text-xs ${user.is_active ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'}">
+                            ${user.is_active ? 'Active' : 'Inactive'}
+                        </span>
+                    </td>
+                    <td class="py-3 px-4 text-center text-white">${user.completed_challenges}</td>
+                    <td class="py-3 px-4 text-center text-pink-400 font-medium">${user.total_points}</td>
+                    <td class="py-3 px-4 text-center text-gray-400">${new Date(user.date_joined).toLocaleDateString()}</td>
+                    <td class="py-3 px-4 text-center">
+                        <div class="flex justify-center space-x-2">
+                            <button onclick='openEditModal(${JSON.stringify(user)})' 
+                                    class="px-3 py-1 bg-pink-600/20 text-pink-400 border border-pink-600/50 rounded hover:bg-pink-600/30 transition text-xs">
+                                Edit
+                            </button>
+                            <button onclick="viewProgress(${user.id})" 
+                                    class="px-3 py-1 bg-blue-600/20 text-blue-400 border border-blue-600/50 rounded hover:bg-blue-600/30 transition text-xs">
+                                Progress
+                            </button>
+                            ${!user.is_active ? '' : `
+                            <button onclick="deactivateUser(${user.id}, '${user.username}')" 
+                                    class="px-3 py-1 bg-red-600/20 text-red-400 border border-red-600/50 rounded hover:bg-red-600/30 transition text-xs">
+                                Deactivate
+                            </button>
+                            `}
+                        </div>
+                    </td>
+                </tr>
+            `).join('');
+        }
+
+        function renderPagination(currentPage, totalPages, totalCount) {
+            document.getElementById('showingCount').textContent = totalCount;
+            
+            const container = document.getElementById('paginationButtons');
+            
+            if (totalPages <= 1) {
+                container.innerHTML = '';
+                return;
+            }
+
+            let buttons = [];
+            
+            if (currentPage > 1) {
+                buttons.push(`<button onclick="loadUsers(${currentPage - 1})" class="px-3 py-1 bg-gray-700 hover:bg-gray-600 rounded transition text-sm">Previous</button>`);
+            }
+
+            for (let i = 1; i <= totalPages; i++) {
+                if (i === currentPage) {
+                    buttons.push(`<button class="px-3 py-1 bg-pink-600 rounded text-sm">${i}</button>`);
+                } else if (i === 1 || i === totalPages || (i >= currentPage - 1 && i <= currentPage + 1)) {
+                    buttons.push(`<button onclick="loadUsers(${i})" class="px-3 py-1 bg-gray-700 hover:bg-gray-600 rounded transition text-sm">${i}</button>`);
+                } else if (i === currentPage - 2 || i === currentPage + 2) {
+                    buttons.push('<span class="px-2 text-gray-500">...</span>');
+                }
+            }
+
+            if (currentPage < totalPages) {
+                buttons.push(`<button onclick="loadUsers(${currentPage + 1})" class="px-3 py-1 bg-gray-700 hover:bg-gray-600 rounded transition text-sm">Next</button>`);
+            }
+
+            container.innerHTML = buttons.join('');
+        }
+
+        function openEditModal(user) {
+            document.getElementById('editUserId').value = user.id;
+            document.getElementById('editUsername').value = user.username;
+            document.getElementById('editEmail').value = user.email;
+            document.getElementById('editFirstName').value = user.first_name || '';
+            document.getElementById('editLastName').value = user.last_name || '';
+            document.getElementById('editIsActive').checked = user.is_active;
+            
+            document.getElementById('editModal').classList.add('active');
+        }
+
+        function closeModal() {
+            document.getElementById('editModal').classList.remove('active');
+        }
+
+        async function updateUser(event) {
+            event.preventDefault();
+            
+            const userId = document.getElementById('editUserId').value;
+            const data = {
+                username: document.getElementById('editUsername').value,
+                email: document.getElementById('editEmail').value,
+                first_name: document.getElementById('editFirstName').value,
+                last_name: document.getElementById('editLastName').value,
+                is_active: document.getElementById('editIsActive').checked
+            };
+
+            try {
+                const response = await fetch(`/api/admin/users/${userId}/update/`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(data)
+                });
+
+                const result = await response.json();
+
+                if (result.ok) {
+                    alert('User updated successfully!');
+                    closeModal();
+                    loadUsers(currentPage);
+                } else {
+                    alert('Error: ' + result.message);
+                }
+            } catch (error) {
+                console.error('Error updating user:', error);
+                alert('Failed to update user. Please try again.');
+            }
+        }
+
+        async function deactivateUser(userId, username) {
+            if (!confirm(`Are you sure you want to deactivate user "${username}"?`)) {
+                return;
+            }
+
+            try {
+                const response = await fetch(`/api/admin/users/${userId}/delete/`, {
+                    method: 'POST'
+                });
+
+                const result = await response.json();
+
+                if (result.ok) {
+                    alert('User deactivated successfully!');
+                    loadUsers(currentPage);
+                } else {
+                    alert('Error: ' + result.message);
+                }
+            } catch (error) {
+                console.error('Error deactivating user:', error);
+                alert('Failed to deactivate user. Please try again.');
+            }
+        }
+
+        async function viewProgress(userId) {
+            document.getElementById('progressModal').classList.add('active');
+            document.getElementById('progressContent').innerHTML = '<p class="text-center text-gray-400">Loading progress...</p>';
+
+            try {
+                const response = await fetch(`/api/admin/users/${userId}/progress/`);
+                const data = await response.json();
+
+                const html = `
+                    <div class="mb-6">
+                        <h3 class="text-lg font-bold text-white mb-2">${data.user.username}</h3>
+                        <div class="grid grid-cols-3 gap-4">
+                            <div class="bg-gray-700/30 p-3 rounded-lg">
+                                <p class="text-xs text-gray-400">Total Points</p>
+                                <p class="text-2xl font-bold text-pink-400">${data.total_points}</p>
+                            </div>
+                            <div class="bg-gray-700/30 p-3 rounded-lg">
+                                <p class="text-xs text-gray-400">Completed</p>
+                                <p class="text-2xl font-bold text-green-400">${data.completed_count}</p>
+                            </div>
+                            <div class="bg-gray-700/30 p-3 rounded-lg">
+                                <p class="text-xs text-gray-400">In Progress</p>
+                                <p class="text-2xl font-bold text-yellow-400">${data.in_progress_count}</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <h4 class="font-bold text-white mb-3">Challenge History</h4>
+                    <div class="space-y-2 max-h-96 overflow-y-auto">
+                        ${data.progress.map(p => `
+                            <div class="bg-gray-700/20 p-3 rounded-lg">
+                                <div class="flex justify-between items-start mb-1">
+                                    <div>
+                                        <p class="font-medium text-white">${p.challenge_title}</p>
+                                        <p class="text-xs text-gray-400">${p.category} • ${p.difficulty}</p>
+                                    </div>
+                                    <span class="px-2 py-1 rounded text-xs ${
+                                        p.status === 'completed' ? 'bg-green-500/20 text-green-400' :
+                                        p.status === 'in_progress' ? 'bg-yellow-500/20 text-yellow-400' :
+                                        'bg-gray-500/20 text-gray-400'
+                                    }">
+                                        ${p.status_display}
+                                    </span>
+                                </div>
+                                <div class="flex justify-between text-xs text-gray-400">
+                                    <span>${p.points} points</span>
+                                    ${p.time_spent_minutes ? `<span>Completed in ${p.time_spent_minutes} min</span>` : ''}
+                                </div>
+                            </div>
+                        `).join('')}
+                    </div>
+                `;
+
+                document.getElementById('progressContent').innerHTML = html;
+
+            } catch (error) {
+                console.error('Error loading progress:', error);
+                document.getElementById('progressContent').innerHTML = '<p class="text-center text-red-400">Failed to load progress.</p>';
+            }
+        }
+
+        function closeProgressModal() {
+            document.getElementById('progressModal').classList.remove('active');
+        }
+    </script>
+
+</body>
+</html>
