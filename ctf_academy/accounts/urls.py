@@ -45,7 +45,7 @@ urlpatterns = [
     path("login", login_page, name="login_page"),
     path("logout", logout_page, name="logout_page"),
     path("about/", about_page, name="about_page"),
-    path("dashboard/", admin_dashboard_page, name="admin_dashboard_page"),
+    
     path("profile/", profile_page, name="profile_page"),
 
     # CHALLENGES
@@ -69,6 +69,7 @@ urlpatterns = [
 
     # === ADMIN ENDPOINTS ===
     # User Management
+    path("admin/dashboard/", admin_dashboard_page, name="admin_dashboard_page"),
     path("admin/users/", admin_users_page, name="admin_users_page"),
     path("api/admin/users/", admin_users_list, name="admin_users_list"),
     path("api/admin/users/<int:user_id>/", admin_user_detail, name="admin_user_detail"),  # ADD THIS LINE

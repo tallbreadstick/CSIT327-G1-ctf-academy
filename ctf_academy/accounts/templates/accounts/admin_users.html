@@ -181,25 +181,7 @@
           <span>Manage Users</span>
         </a>
 
-        <a
-          href="{% url 'admin_dashboard_page' %}#challenges-section"
-          class="flex items-center space-x-2 px-3 py-2 text-gray-400 hover:text-white hover:bg-gray-700/50 rounded-lg transition text-sm"
-        >
-          <svg
-            class="w-4 h-4"
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
-          >
-            <path
-              stroke-linecap="round"
-              stroke-linejoin="round"
-              stroke-width="2"
-              d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"
-            />
-          </svg>
-          <span>Analytics</span>
-        </a>
+    
       </nav>
     </aside>
 
@@ -219,12 +201,7 @@
           </div>
 
           <div class="flex items-center space-x-4">
-            <button
-              onclick="exportUsers()"
-              class="px-3 py-1.5 bg-pink-600/20 text-pink-400 border border-pink-600/50 rounded-lg text-sm hover:bg-pink-600/30 transition"
-            >
-              Export Users
-            </button>
+            
 
             <a
               href="{% url 'logout_page' %}"
