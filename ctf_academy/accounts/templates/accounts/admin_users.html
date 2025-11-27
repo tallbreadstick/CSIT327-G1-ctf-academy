@@ -3,429 +3,321 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>User Management - CTF Academy</title>
+    <title>CTF Academy - Manage Users</title>
     <link rel="icon" type="image/png" href="{% static 'accounts/images/logo.png' %}">
     {% tailwind_css %}
     <style>
+        html, body { overflow: auto !important; }
+        @keyframes fadeInUp {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        @keyframes bg-pan {
+            0% { background-position: 0% center; }
+            100% { background-position: 200% center; }
+        }
+        .fade-up { animation: fadeInUp 0.5s ease-out forwards; }
+        .glow-text {
+            background: linear-gradient(90deg, #ec4899, #f9a8d4, #ffffff);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-size: 200% auto;
+            animation: bg-pan 8s linear infinite;
+        }
         .glass-card {
             background: rgba(31, 41, 55, 0.6);
             backdrop-filter: blur(10px);
             border: 1px solid rgba(236, 72, 153, 0.2);
         }
-        .modal {
-            display: none;
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: rgba(0, 0, 0, 0.8);
-            z-index: 9999;
+        .stat-badge {
+            display: inline-flex;
             align-items: center;
-            justify-content: center;
+            padding: 0.25rem 0.5rem;
+            border-radius: 9999px;
+            font-size: 0.75rem;
+            font-weight: 500;
         }
-        .modal.active { display: flex; }
     </style>
 </head>
-<body class="bg-gray-900 text-white">
+<body class="bg-gray-900 text-white flex min-h-screen relative overflow-hidden">
 
-    <div class="container mx-auto p-6">
-        <div class="flex justify-between items-center mb-6">
-            <h1 class="text-3xl font-bold text-pink-400">User Management</h1>
-            <a href="{% url 'admin_dashboard_page' %}" class="px-4 py-2 bg-gray-700 hover:bg-gray-600 rounded-lg transition">
-                ← Back to Dashboard
+    <!-- BACKGROUND EFFECT -->
+    <div class="absolute inset-0 opacity-10 bg-[radial-gradient(circle_at_center,#ec4899,transparent_70%)] animate-pulse"></div>
+
+    <!-- SIDEBAR -->
+    <aside class="w-48 bg-gray-800/80 backdrop-blur border-r border-gray-700 flex flex-col relative z-10">
+        <div class="p-4 border-b border-gray-700">
+            <div class="flex items-center space-x-2">
+                <img src="{% static 'accounts/images/logo.png' %}" alt="Logo" class="h-7 w-7">
+                <span class="text-lg font-bold glow-text">CTF Academy</span>
+            </div>
+        </div>
+
+        <nav class="flex-grow p-3 space-y-1">
+            <a href="{% url 'admin_dashboard_page' %}" class="flex items-center space-x-2 px-3 py-2 text-gray-400 hover:text-white hover:bg-gray-700/50 rounded-lg transition text-sm">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/>
+                </svg>
+                <span>Dashboard</span>
             </a>
-        </div>
-
-        <!-- Search & Filters -->
-        <div class="glass-card rounded-lg p-4 mb-6">
-            <div class="flex items-center space-x-4">
-                <input type="text" 
-                       id="searchInput" 
-                       placeholder="Search users by username, email, or name..." 
-                       class="flex-grow px-4 py-2 bg-gray-700 border border-pink-600/30 rounded-lg text-white focus:outline-none focus:border-pink-600">
-                <button onclick="searchUsers()" class="px-6 py-2 bg-pink-600 hover:bg-pink-700 rounded-lg transition">
-                    Search
-                </button>
-                <button onclick="loadUsers()" class="px-6 py-2 bg-gray-700 hover:bg-gray-600 rounded-lg transition">
-                    Refresh
-                </button>
-            </div>
-        </div>
-
-        <!-- Users Table -->
-        <div class="glass-card rounded-lg p-6">
-            <div class="overflow-x-auto">
-                <table class="w-full text-sm">
-                    <thead>
-                        <tr class="border-b border-gray-700">
-                            <th class="text-left py-3 px-4 text-gray-400">Username</th>
-                            <th class="text-left py-3 px-4 text-gray-400">Email</th>
-                            <th class="text-center py-3 px-4 text-gray-400">Status</th>
-                            <th class="text-center py-3 px-4 text-gray-400">Completed</th>
-                            <th class="text-center py-3 px-4 text-gray-400">Points</th>
-                            <th class="text-center py-3 px-4 text-gray-400">Joined</th>
-                            <th class="text-center py-3 px-4 text-gray-400">Actions</th>
-                        </tr>
-                    </thead>
-                    <tbody id="usersTableBody">
-                        <tr>
-                            <td colspan="7" class="text-center py-8 text-gray-400">
-                                Loading users...
-                            </td>
-                        </tr>
-                    </tbody>
-                </table>
-            </div>
-
-            <!-- Pagination -->
-            <div id="pagination" class="mt-4 flex justify-between items-center">
-                <div class="text-sm text-gray-400">
-                    Showing <span id="showingCount">0</span> users
-                </div>
-                <div class="flex space-x-2" id="paginationButtons"></div>
-            </div>
-        </div>
-    </div>
-
-    <!-- Edit User Modal -->
-    <div id="editModal" class="modal">
-        <div class="glass-card rounded-lg p-6 max-w-md w-full mx-4">
-            <h2 class="text-2xl font-bold mb-4 text-pink-400">Edit User</h2>
             
-            <form id="editForm" onsubmit="updateUser(event)">
-                <input type="hidden" id="editUserId">
-                
-                <div class="mb-4">
-                    <label class="block text-sm font-medium mb-2">Username</label>
-                    <input type="text" 
-                           id="editUsername" 
-                           class="w-full px-4 py-2 bg-gray-700 border border-pink-600/30 rounded-lg text-white focus:outline-none focus:border-pink-600"
-                           required>
-                </div>
-
-                <div class="mb-4">
-                    <label class="block text-sm font-medium mb-2">Email</label>
-                    <input type="email" 
-                           id="editEmail" 
-                           class="w-full px-4 py-2 bg-gray-700 border border-pink-600/30 rounded-lg text-white focus:outline-none focus:border-pink-600"
-                           required>
-                </div>
-
-                <div class="mb-4">
-                    <label class="block text-sm font-medium mb-2">First Name</label>
-                    <input type="text" 
-                           id="editFirstName" 
-                           class="w-full px-4 py-2 bg-gray-700 border border-pink-600/30 rounded-lg text-white focus:outline-none focus:border-pink-600">
-                </div>
-
-                <div class="mb-4">
-                    <label class="block text-sm font-medium mb-2">Last Name</label>
-                    <input type="text" 
-                           id="editLastName" 
-                           class="w-full px-4 py-2 bg-gray-700 border border-pink-600/30 rounded-lg text-white focus:outline-none focus:border-pink-600">
-                </div>
-
-                <div class="mb-6">
-                    <label class="flex items-center space-x-2">
-                        <input type="checkbox" id="editIsActive" class="form-checkbox h-5 w-5 text-pink-600">
-                        <span class="text-sm">Account Active</span>
-                    </label>
-                </div>
-
-                <div class="flex space-x-3">
-                    <button type="submit" 
-                            class="flex-grow px-4 py-2 bg-pink-600 hover:bg-pink-700 rounded-lg transition">
-                        Save Changes
-                    </button>
-                    <button type="button" 
-                            onclick="closeModal()" 
-                            class="px-4 py-2 bg-gray-700 hover:bg-gray-600 rounded-lg transition">
-                        Cancel
-                    </button>
-                </div>
-            </form>
-        </div>
-    </div>
-
-    <!-- View Progress Modal -->
-    <div id="progressModal" class="modal">
-        <div class="glass-card rounded-lg p-6 max-w-3xl w-full mx-4 max-h-[90vh] overflow-y-auto">
-            <div class="flex justify-between items-center mb-4">
-                <h2 class="text-2xl font-bold text-pink-400">User Progress</h2>
-                <button onclick="closeProgressModal()" class="text-gray-400 hover:text-white">
-                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
-                    </svg>
-                </button>
-            </div>
+            <a href="{% url 'admin_users_page' %}" class="flex items-center space-x-2 px-3 py-2 bg-pink-600/20 text-pink-400 rounded-lg border border-pink-600/50 font-medium text-sm">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"/>
+                </svg>
+                <span>Manage Users</span>
+            </a>
             
-            <div id="progressContent">
-                <p class="text-center text-gray-400">Loading progress...</p>
+            <a href="{% url 'admin_dashboard_page' %}#challenges-section" class="flex items-center space-x-2 px-3 py-2 text-gray-400 hover:text-white hover:bg-gray-700/50 rounded-lg transition text-sm">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/>
+                </svg>
+                <span>Analytics</span>
+            </a>
+        </nav>
+    </aside>
+
+    <!-- MAIN CONTENT -->
+    <div class="flex-grow flex flex-col relative z-10">
+        <!-- TOP NAVBAR -->
+        <header class="bg-gray-800/80 backdrop-blur border-b border-gray-700 px-6 py-3 relative" style="z-index: 1000;">
+            <div class="flex items-center justify-between">
+                <div>
+                    <h1 class="text-2xl font-bold">Manage Users</h1>
+                    <p class="text-sm text-gray-400">View and manage all platform users</p>
+                </div>
+
+                <div class="flex items-center space-x-4">
+                    <button onclick="exportUsers()" class="px-3 py-1.5 bg-pink-600/20 text-pink-400 border border-pink-600/50 rounded-lg text-sm hover:bg-pink-600/30 transition">
+                        Export Users
+                    </button>
+                    
+                    <a href="{% url 'logout_page' %}" class="px-3 py-1.5 bg-gray-700 hover:bg-gray-600 rounded-lg text-sm transition">
+                        Logout
+                    </a>
+                </div>
             </div>
-        </div>
+        </header>
+
+        <!-- USER MANAGEMENT CONTENT -->
+        <main class="flex-grow p-5 overflow-y-auto relative" style="z-index: 1;">
+            
+            <!-- STATS OVERVIEW -->
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-5">
+                <div class="glass-card rounded-lg p-4 fade-up hover:scale-105 transition">
+                    <div class="flex items-center justify-between mb-2">
+                        <h3 class="text-gray-400 text-xs font-medium">Total Users</h3>
+                        <svg class="w-5 h-5 text-pink-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"/>
+                        </svg>
+                    </div>
+                    <p class="text-3xl font-bold text-white">{{ total_users }}</p>
+                    <p class="text-xs text-gray-400 mt-1">Registered accounts</p>
+                </div>
+
+                <div class="glass-card rounded-lg p-4 fade-up hover:scale-105 transition" style="animation-delay: 0.1s;">
+                    <div class="flex items-center justify-between mb-2">
+                        <h3 class="text-gray-400 text-xs font-medium">Active Users</h3>
+                        <svg class="w-5 h-5 text-pink-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                        </svg>
+                    </div>
+                    <p class="text-3xl font-bold text-white">{{ active_users }}</p>
+                    <p class="text-xs text-green-400 mt-1">Last 7 days</p>
+                </div>
+
+                <div class="glass-card rounded-lg p-4 fade-up hover:scale-105 transition" style="animation-delay: 0.2s;">
+                    <div class="flex items-center justify-between mb-2">
+                        <h3 class="text-gray-400 text-xs font-medium">Admin Users</h3>
+                        <svg class="w-5 h-5 text-pink-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/>
+                        </svg>
+                    </div>
+                    <p class="text-3xl font-bold text-white">{{ admin_users }}</p>
+                    <p class="text-xs text-gray-400 mt-1">Staff accounts</p>
+                </div>
+
+                <div class="glass-card rounded-lg p-4 fade-up hover:scale-105 transition" style="animation-delay: 0.3s;">
+                    <div class="flex items-center justify-between mb-2">
+                        <h3 class="text-gray-400 text-xs font-medium">New This Month</h3>
+                        <svg class="w-5 h-5 text-pink-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z"/>
+                        </svg>
+                    </div>
+                    <p class="text-3xl font-bold text-white">{{ new_users_this_month }}</p>
+                    <p class="text-xs text-green-400 mt-1">+{{ growth_percentage }}%</p>
+                </div>
+            </div>
+
+            <!-- SEARCH AND FILTER BAR -->
+            <div class="glass-card rounded-lg p-4 mb-5 fade-up" style="animation-delay: 0.4s;">
+                <div class="flex flex-col md:flex-row gap-3">
+                    <div class="flex-grow">
+                        <input type="text" id="searchInput" placeholder="Search by username or email..." 
+                               class="w-full px-4 py-2 bg-gray-700/50 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:border-pink-500 focus:outline-none transition"
+                               onkeyup="filterUsers()">
+                    </div>
+                    <select id="roleFilter" class="px-4 py-2 bg-gray-700/50 border border-gray-600 rounded-lg text-white focus:border-pink-500 focus:outline-none transition" onchange="filterUsers()">
+                        <option value="">All Roles</option>
+                        <option value="admin">Admin</option>
+                        <option value="user">User</option>
+                    </select>
+                    <select id="statusFilter" class="px-4 py-2 bg-gray-700/50 border border-gray-600 rounded-lg text-white focus:border-pink-500 focus:outline-none transition" onchange="filterUsers()">
+                        <option value="">All Status</option>
+                        <option value="active">Active</option>
+                        <option value="inactive">Inactive</option>
+                    </select>
+                </div>
+            </div>
+
+            <!-- USERS TABLE -->
+            <div class="glass-card rounded-lg p-5 fade-up" style="animation-delay: 0.5s;">
+                <h2 class="text-lg font-bold mb-4 text-pink-400 flex items-center justify-between">
+                    <span class="flex items-center">
+                        <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"/>
+                        </svg>
+                        All Users
+                    </span>
+                    <span class="text-sm text-gray-400 font-normal">Showing <span id="userCount">{{ users|length }}</span> users</span>
+                </h2>
+                <div class="overflow-x-auto">
+                    <table class="w-full text-sm" id="usersTable">
+                        <thead>
+                            <tr class="border-b border-gray-700">
+                                <th class="text-left py-3 px-2 text-gray-400 font-medium">User</th>
+                                <th class="text-left py-3 px-2 text-gray-400 font-medium">Email</th>
+                                <th class="text-center py-3 px-2 text-gray-400 font-medium">Role</th>
+                                <th class="text-center py-3 px-2 text-gray-400 font-medium">Points</th>
+                                <th class="text-center py-3 px-2 text-gray-400 font-medium">Completed</th>
+                                <th class="text-center py-3 px-2 text-gray-400 font-medium">Joined</th>
+                                <th class="text-center py-3 px-2 text-gray-400 font-medium">Last Active</th>
+                                <th class="text-center py-3 px-2 text-gray-400 font-medium">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for user in users %}
+                            <tr class="border-b border-gray-700/50 hover:bg-gray-700/20 transition user-row" 
+                                data-username="{{ user.username|lower }}" 
+                                data-email="{{ user.email|lower }}"
+                                data-role="{% if user.is_staff %}admin{% else %}user{% endif %}"
+                                data-status="{% if user.is_active %}active{% else %}inactive{% endif %}">
+                                <td class="py-3 px-2">
+                                    <div class="flex items-center space-x-3">
+                                        <div class="w-8 h-8 rounded-full bg-pink-600/20 flex items-center justify-center text-pink-400 font-bold">
+                                            {{ user.username|first|upper }}
+                                        </div>
+                                        <div>
+                                            <p class="font-medium text-white">{{ user.username }}</p>
+                                            {% if not user.is_active %}
+                                            <span class="text-xs text-red-400">Inactive</span>
+                                            {% endif %}
+                                        </div>
+                                    </div>
+                                </td>
+                                <td class="py-3 px-2 text-gray-400">{{ user.email }}</td>
+                                <td class="py-3 px-2 text-center">
+                                    {% if user.is_superuser %}
+                                        <span class="stat-badge bg-purple-500/20 text-purple-400">Superadmin</span>
+                                    {% elif user.is_staff %}
+                                        <span class="stat-badge bg-pink-500/20 text-pink-400">Admin</span>
+                                    {% else %}
+                                        <span class="stat-badge bg-blue-500/20 text-blue-400">User</span>
+                                    {% endif %}
+                                </td>
+                                <td class="py-3 px-2 text-center text-pink-400 font-medium">{{ user.points|default:0 }}</td>
+                                <td class="py-3 px-2 text-center text-white">{{ user.completed_count|default:0 }}</td>
+                                <td class="py-3 px-2 text-center text-gray-400">{{ user.date_joined|date:"M d, Y" }}</td>
+                                <td class="py-3 px-2 text-center text-gray-400">
+                                    {% if user.last_login %}
+                                        {{ user.last_login|timesince }} ago
+                                    {% else %}
+                                        Never
+                                    {% endif %}
+                                </td>
+                                <td class="py-3 px-2 text-center">
+                                    <div class="flex items-center justify-center space-x-2">
+                                        <a href="#" class="text-pink-400 hover:text-pink-300 transition" title="View Details">
+                                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
+                                            </svg>
+                                        </a>
+                                        <button onclick="editUser('{{ user.id }}')" class="text-blue-400 hover:text-blue-300 transition" title="Edit User">
+                                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
+                                            </svg>
+                                        </button>
+                                        <button onclick="confirmDelete('{{ user.id }}', '{{ user.username }}')" class="text-red-400 hover:text-red-300 transition" title="Delete User">
+                                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+                                            </svg>
+                                        </button>
+                                    </div>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+        </main>
+
+        <!-- FOOTER -->
+        <footer class="bg-gray-800/80 backdrop-blur border-t border-gray-700 px-6 py-3">
+            <div class="flex justify-between items-center text-xs text-gray-400">
+                <p>© 2025 CTF Academy • User Management</p>
+                <p>Last updated: <span id="lastUpdate"></span></p>
+            </div>
+        </footer>
     </div>
 
     <script>
-        let currentPage = 1;
-        let currentQuery = '';
+        document.getElementById('lastUpdate').textContent = new Date().toLocaleString();
 
-        document.addEventListener('DOMContentLoaded', () => {
-            loadUsers();
-        });
+        function filterUsers() {
+            const searchTerm = document.getElementById('searchInput').value.toLowerCase();
+            const roleFilter = document.getElementById('roleFilter').value.toLowerCase();
+            const statusFilter = document.getElementById('statusFilter').value.toLowerCase();
+            const rows = document.querySelectorAll('.user-row');
+            let visibleCount = 0;
 
-        document.getElementById('searchInput').addEventListener('keypress', (e) => {
-            if (e.key === 'Enter') {
-                searchUsers();
-            }
-        });
+            rows.forEach(row => {
+                const username = row.dataset.username;
+                const email = row.dataset.email;
+                const role = row.dataset.role;
+                const status = row.dataset.status;
 
-        function searchUsers() {
-            currentQuery = document.getElementById('searchInput').value;
-            currentPage = 1;
-            loadUsers();
-        }
+                const matchesSearch = username.includes(searchTerm) || email.includes(searchTerm);
+                const matchesRole = !roleFilter || role === roleFilter;
+                const matchesStatus = !statusFilter || status === statusFilter;
 
-        async function loadUsers(page = 1) {
-            currentPage = page;
-            const url = `/api/admin/users/?page=${page}&q=${encodeURIComponent(currentQuery)}`;
-            
-            try {
-                const response = await fetch(url);
-                const data = await response.json();
-                
-                renderUsers(data.users);
-                renderPagination(data.page, data.total_pages, data.total_count);
-                
-            } catch (error) {
-                console.error('Error loading users:', error);
-                document.getElementById('usersTableBody').innerHTML = `
-                    <tr>
-                        <td colspan="7" class="text-center py-8 text-red-400">
-                            Error loading users. Please try again.
-                        </td>
-                    </tr>
-                `;
-            }
-        }
-
-        function renderUsers(users) {
-            const tbody = document.getElementById('usersTableBody');
-            
-            if (users.length === 0) {
-                tbody.innerHTML = `
-                    <tr>
-                        <td colspan="7" class="text-center py-8 text-gray-400">
-                            No users found.
-                        </td>
-                    </tr>
-                `;
-                return;
-            }
-
-            tbody.innerHTML = users.map(user => `
-                <tr class="border-b border-gray-700/50 hover:bg-gray-700/20 transition">
-                    <td class="py-3 px-4 text-white font-medium">${user.username}</td>
-                    <td class="py-3 px-4 text-gray-400">${user.email}</td>
-                    <td class="py-3 px-4 text-center">
-                        <span class="px-2 py-1 rounded-full text-xs ${user.is_active ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'}">
-                            ${user.is_active ? 'Active' : 'Inactive'}
-                        </span>
-                    </td>
-                    <td class="py-3 px-4 text-center text-white">${user.completed_challenges}</td>
-                    <td class="py-3 px-4 text-center text-pink-400 font-medium">${user.total_points}</td>
-                    <td class="py-3 px-4 text-center text-gray-400">${new Date(user.date_joined).toLocaleDateString()}</td>
-                    <td class="py-3 px-4 text-center">
-                        <div class="flex justify-center space-x-2">
-                            <button onclick='openEditModal(${JSON.stringify(user)})' 
-                                    class="px-3 py-1 bg-pink-600/20 text-pink-400 border border-pink-600/50 rounded hover:bg-pink-600/30 transition text-xs">
-                                Edit
-                            </button>
-                            <button onclick="viewProgress(${user.id})" 
-                                    class="px-3 py-1 bg-blue-600/20 text-blue-400 border border-blue-600/50 rounded hover:bg-blue-600/30 transition text-xs">
-                                Progress
-                            </button>
-                            ${!user.is_active ? '' : `
-                            <button onclick="deactivateUser(${user.id}, '${user.username}')" 
-                                    class="px-3 py-1 bg-red-600/20 text-red-400 border border-red-600/50 rounded hover:bg-red-600/30 transition text-xs">
-                                Deactivate
-                            </button>
-                            `}
-                        </div>
-                    </td>
-                </tr>
-            `).join('');
-        }
-
-        function renderPagination(currentPage, totalPages, totalCount) {
-            document.getElementById('showingCount').textContent = totalCount;
-            
-            const container = document.getElementById('paginationButtons');
-            
-            if (totalPages <= 1) {
-                container.innerHTML = '';
-                return;
-            }
-
-            let buttons = [];
-            
-            if (currentPage > 1) {
-                buttons.push(`<button onclick="loadUsers(${currentPage - 1})" class="px-3 py-1 bg-gray-700 hover:bg-gray-600 rounded transition text-sm">Previous</button>`);
-            }
-
-            for (let i = 1; i <= totalPages; i++) {
-                if (i === currentPage) {
-                    buttons.push(`<button class="px-3 py-1 bg-pink-600 rounded text-sm">${i}</button>`);
-                } else if (i === 1 || i === totalPages || (i >= currentPage - 1 && i <= currentPage + 1)) {
-                    buttons.push(`<button onclick="loadUsers(${i})" class="px-3 py-1 bg-gray-700 hover:bg-gray-600 rounded transition text-sm">${i}</button>`);
-                } else if (i === currentPage - 2 || i === currentPage + 2) {
-                    buttons.push('<span class="px-2 text-gray-500">...</span>');
-                }
-            }
-
-            if (currentPage < totalPages) {
-                buttons.push(`<button onclick="loadUsers(${currentPage + 1})" class="px-3 py-1 bg-gray-700 hover:bg-gray-600 rounded transition text-sm">Next</button>`);
-            }
-
-            container.innerHTML = buttons.join('');
-        }
-
-        function openEditModal(user) {
-            document.getElementById('editUserId').value = user.id;
-            document.getElementById('editUsername').value = user.username;
-            document.getElementById('editEmail').value = user.email;
-            document.getElementById('editFirstName').value = user.first_name || '';
-            document.getElementById('editLastName').value = user.last_name || '';
-            document.getElementById('editIsActive').checked = user.is_active;
-            
-            document.getElementById('editModal').classList.add('active');
-        }
-
-        function closeModal() {
-            document.getElementById('editModal').classList.remove('active');
-        }
-
-        async function updateUser(event) {
-            event.preventDefault();
-            
-            const userId = document.getElementById('editUserId').value;
-            const data = {
-                username: document.getElementById('editUsername').value,
-                email: document.getElementById('editEmail').value,
-                first_name: document.getElementById('editFirstName').value,
-                last_name: document.getElementById('editLastName').value,
-                is_active: document.getElementById('editIsActive').checked
-            };
-
-            try {
-                const response = await fetch(`/api/admin/users/${userId}/update/`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(data)
-                });
-
-                const result = await response.json();
-
-                if (result.ok) {
-                    alert('User updated successfully!');
-                    closeModal();
-                    loadUsers(currentPage);
+                if (matchesSearch && matchesRole && matchesStatus) {
+                    row.style.display = '';
+                    visibleCount++;
                 } else {
-                    alert('Error: ' + result.message);
+                    row.style.display = 'none';
                 }
-            } catch (error) {
-                console.error('Error updating user:', error);
-                alert('Failed to update user. Please try again.');
-            }
+            });
+
+            document.getElementById('userCount').textContent = visibleCount;
         }
 
-        async function deactivateUser(userId, username) {
-            if (!confirm(`Are you sure you want to deactivate user "${username}"?`)) {
-                return;
-            }
-
-            try {
-                const response = await fetch(`/api/admin/users/${userId}/delete/`, {
-                    method: 'POST'
-                });
-
-                const result = await response.json();
-
-                if (result.ok) {
-                    alert('User deactivated successfully!');
-                    loadUsers(currentPage);
-                } else {
-                    alert('Error: ' + result.message);
-                }
-            } catch (error) {
-                console.error('Error deactivating user:', error);
-                alert('Failed to deactivate user. Please try again.');
-            }
+        function exportUsers() {
+            window.location.href = '/api/admin/export/?type=users';
         }
 
-        async function viewProgress(userId) {
-            document.getElementById('progressModal').classList.add('active');
-            document.getElementById('progressContent').innerHTML = '<p class="text-center text-gray-400">Loading progress...</p>';
-
-            try {
-                const response = await fetch(`/api/admin/users/${userId}/progress/`);
-                const data = await response.json();
-
-                const html = `
-                    <div class="mb-6">
-                        <h3 class="text-lg font-bold text-white mb-2">${data.user.username}</h3>
-                        <div class="grid grid-cols-3 gap-4">
-                            <div class="bg-gray-700/30 p-3 rounded-lg">
-                                <p class="text-xs text-gray-400">Total Points</p>
-                                <p class="text-2xl font-bold text-pink-400">${data.total_points}</p>
-                            </div>
-                            <div class="bg-gray-700/30 p-3 rounded-lg">
-                                <p class="text-xs text-gray-400">Completed</p>
-                                <p class="text-2xl font-bold text-green-400">${data.completed_count}</p>
-                            </div>
-                            <div class="bg-gray-700/30 p-3 rounded-lg">
-                                <p class="text-xs text-gray-400">In Progress</p>
-                                <p class="text-2xl font-bold text-yellow-400">${data.in_progress_count}</p>
-                            </div>
-                        </div>
-                    </div>
-
-                    <h4 class="font-bold text-white mb-3">Challenge History</h4>
-                    <div class="space-y-2 max-h-96 overflow-y-auto">
-                        ${data.progress.map(p => `
-                            <div class="bg-gray-700/20 p-3 rounded-lg">
-                                <div class="flex justify-between items-start mb-1">
-                                    <div>
-                                        <p class="font-medium text-white">${p.challenge_title}</p>
-                                        <p class="text-xs text-gray-400">${p.category} • ${p.difficulty}</p>
-                                    </div>
-                                    <span class="px-2 py-1 rounded text-xs ${
-                                        p.status === 'completed' ? 'bg-green-500/20 text-green-400' :
-                                        p.status === 'in_progress' ? 'bg-yellow-500/20 text-yellow-400' :
-                                        'bg-gray-500/20 text-gray-400'
-                                    }">
-                                        ${p.status_display}
-                                    </span>
-                                </div>
-                                <div class="flex justify-between text-xs text-gray-400">
-                                    <span>${p.points} points</span>
-                                    ${p.time_spent_minutes ? `<span>Completed in ${p.time_spent_minutes} min</span>` : ''}
-                                </div>
-                            </div>
-                        `).join('')}
-                    </div>
-                `;
-
-                document.getElementById('progressContent').innerHTML = html;
-
-            } catch (error) {
-                console.error('Error loading progress:', error);
-                document.getElementById('progressContent').innerHTML = '<p class="text-center text-red-400">Failed to load progress.</p>';
-            }
+        function editUser(userId) {
+            // Add your edit user logic here
+            alert(`Edit user ${userId}`);
         }
 
-        function closeProgressModal() {
-            document.getElementById('progressModal').classList.remove('active');
+        function confirmDelete(userId, username) {
+            if (confirm(`Are you sure you want to delete user "${username}"? This action cannot be undone.`)) {
+                // Add your delete user logic here
+                alert(`Delete user ${userId}`);
+            }
         }
     </script>
 

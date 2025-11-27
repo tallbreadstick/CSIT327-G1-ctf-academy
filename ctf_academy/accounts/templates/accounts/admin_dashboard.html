@@ -192,28 +192,7 @@
                     </div>
                 </div>
 
-                <!-- Completion Trend Chart -->
-                <div class="glass-card rounded-lg p-5 fade-up" style="animation-delay: 0.5s;">
-                    <h2 class="text-lg font-bold mb-4 text-pink-400">Completion Trend (30 Days)</h2>
-                    <div class="h-64 flex items-end justify-between space-x-1">
-                        {% if completion_trend %}
-                            {% for item in completion_trend %}
-                            <div class="flex-1 bg-pink-600/30 hover:bg-pink-600/50 rounded-t transition relative group" 
-                                 style="height: {{ item.count }}0%; min-height: 4px;">
-                                <div class="absolute -top-8 left-1/2 transform -translate-x-1/2 bg-gray-800 px-2 py-1 rounded text-xs opacity-0 group-hover:opacity-100 transition whitespace-nowrap">
-                                    {{ item.date }}: {{ item.count }}
-                                </div>
-                            </div>
-                            {% endfor %}
-                        {% else %}
-                            <div class="w-full h-full flex items-center justify-center text-gray-500">
-                                No data available
-                            </div>
-                        {% endif %}
-                    </div>
-                    <p class="text-xs text-gray-400 text-center mt-2">Daily completions</p>
-                </div>
-            </div>
+            
 
             <!-- CHALLENGE PERFORMANCE -->
             <div id="challenges-section" class="glass-card rounded-lg p-5 mb-5 fade-up" style="animation-delay: 0.6s;">
@@ -222,7 +201,7 @@
                         <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/>
                         </svg>
-                        Challenge Performance (View Only)
+                        Challenge Performance Statistics
                     </span>
                     <button onclick="exportData('challenges')" class="text-xs px-3 py-1 bg-pink-600/20 text-pink-400 border border-pink-600/50 rounded hover:bg-pink-600/30 transition">
                         Export
@@ -309,7 +288,7 @@
 
                 <!-- Difficulty Distribution -->
                 <div class="glass-card rounded-lg p-5 fade-up" style="animation-delay: 0.8s;">
-                    <h2 class="text-lg font-bold mb-4 text-pink-400">Difficulty Distribution</h2>
+                    <h2 class="text-lg font-bold mb-4 text-pink-400">Challenge Difficulty Distribution</h2>
                     <div class="space-y-4">
                         {% for stat in difficulty_stats %}
                         <div>

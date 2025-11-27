@@ -1058,9 +1058,86 @@ def admin_dashboard_page(request):
 
 @login_required
 @user_passes_test(is_admin)
+@login_required
+@user_passes_test(is_admin)
 def admin_users_page(request):
-    """Render the user management page"""
-    return render(request, "accounts/admin_users.html")
+    """Render the user management page with actual data"""
+    from datetime import timedelta
+    from django.db.models import Sum, Count, Q
+    from django.utils import timezone
+    
+    # === USER STATISTICS ===
+    total_users = User.objects.filter(is_active=True).count()
+    
+    # Active users (logged in within last 7 days)
+    seven_days_ago = timezone.now() - timedelta(days=7)
+    active_users = User.objects.filter(
+        is_active=True,
+        last_login__gte=seven_days_ago
+    ).count()
+    
+    # Admin users count
+    admin_users = User.objects.filter(is_active=True, is_staff=True).count()
+    
+    # New users this month
+    thirty_days_ago = timezone.now() - timedelta(days=30)
+    new_users_this_month = User.objects.filter(
+        date_joined__gte=thirty_days_ago
+    ).count()
+    
+    # Calculate growth percentage (compare to previous month)
+    sixty_days_ago = timezone.now() - timedelta(days=60)
+    previous_month_users = User.objects.filter(
+        date_joined__gte=sixty_days_ago,
+        date_joined__lt=thirty_days_ago
+    ).count()
+    
+    if previous_month_users > 0:
+        growth_percentage = round(
+            ((new_users_this_month - previous_month_users) / previous_month_users) * 100,
+            1
+        )
+    else:
+        growth_percentage = 100 if new_users_this_month > 0 else 0
+    
+    # === ALL USERS WITH DETAILS ===
+    users_list = []
+    for user in User.objects.all().order_by('-date_joined'):
+        # Get completed challenges count
+        completed_count = ChallengeProgress.objects.filter(
+            user=user,
+            status=ChallengeProgress.Status.COMPLETED
+        ).count()
+        
+        # Calculate total points
+        total_points = ChallengeProgress.objects.filter(
+            user=user,
+            status=ChallengeProgress.Status.COMPLETED
+        ).aggregate(points=Sum('challenge__points'))['points'] or 0
+        
+        users_list.append({
+            'id': user.id,
+            'username': user.username,
+            'email': user.email,
+            'is_staff': user.is_staff,
+            'is_superuser': user.is_superuser,
+            'is_active': user.is_active,
+            'date_joined': user.date_joined,
+            'last_login': user.last_login,
+            'points': total_points,
+            'completed_count': completed_count,
+        })
+    
+    context = {
+        'total_users': total_users,
+        'active_users': active_users,
+        'admin_users': admin_users,
+        'new_users_this_month': new_users_this_month,
+        'growth_percentage': growth_percentage,
+        'users': users_list,
+    }
+    
+    return render(request, "accounts/admin_users.html", context)
 
 
 @login_required
@@ -1392,3 +1469,53 @@ def admin_export_data(request):
         return JsonResponse({'progress': list(progress)})
     
     return JsonResponse({'error': 'Invalid export type'}, status=400)
+
+@login_required
+@user_passes_test(is_admin)
+def admin_user_detail(request, user_id):
+    """Get detailed information for a specific user"""
+    user = get_object_or_404(User, id=user_id)
+    
+    # Calculate user stats
+    completed_count = ChallengeProgress.objects.filter(
+        user=user,
+        status=ChallengeProgress.Status.COMPLETED
+    ).count()
+    
+    total_points = ChallengeProgress.objects.filter(
+        user=user,
+        status=ChallengeProgress.Status.COMPLETED
+    ).aggregate(points=Sum('challenge__points'))['points'] or 0
+    
+    favorites_count = Favorite.objects.filter(user=user).count()
+    
+    # Recent activity
+    recent_progress = ChallengeProgress.objects.filter(
+        user=user
+    ).select_related('challenge').order_by('-updated_at')[:5]
+    
+    user_data = {
+        'id': user.id,
+        'username': user.username,
+        'email': user.email,
+        'first_name': user.first_name,
+        'last_name': user.last_name,
+        'is_staff': user.is_staff,
+        'is_superuser': user.is_superuser,
+        'is_active': user.is_active,
+        'date_joined': user.date_joined,
+        'last_login': user.last_login,
+        'completed_count': completed_count,
+        'total_points': total_points,
+        'favorites_count': favorites_count,
+        'recent_activity': [
+            {
+                'challenge_title': p.challenge.title,
+                'status': p.get_status_display(),
+                'updated_at': p.updated_at
+            }
+            for p in recent_progress
+        ]
+    }
+    
+    return JsonResponse({'user': user_data})
