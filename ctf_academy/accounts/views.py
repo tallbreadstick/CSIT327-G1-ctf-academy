@@ -933,18 +933,11 @@ def chatbot_api(request):
         return error_response('POST method required', code='method_not_allowed', status_code=405)
     
     try:
-        with transaction.atomic():
-            fav, created = Favorite.objects.get_or_create(user=request.user, challenge=challenge)
+        # Parse the JSON data
+        data = json.loads(request.body.decode('utf-8'))
         user_message = data.get('message', '').strip()
-        if isinstance(exc, IntegrityError):
-            logger.warning(
-                "Favorite race detected", extra={"challenge_id": challenge_id, "user_id": request.user.id}
-            )
-            fav = Favorite.objects.filter(user=request.user, challenge=challenge).first()
-            created = False
-        else:
-            logger.exception("Failed to toggle favorite for challenge %s", challenge_id)
-            return error_response("Unable to update favorite right now.", code="favorite_error", status_code=500)
+        
+        if not user_message:
             return error_response('Message is required', code='missing_message', status_code=400)
         
         # Check if API key is configured
@@ -958,8 +951,7 @@ def chatbot_api(request):
         # Configure Gemini
         genai.configure(api_key=settings.GEMINI_API_KEY)
         
-        # Use generate_content directly without specifying model
-        # This uses the default available model
+        # Generation config
         generation_config = {
             "temperature": 0.7,
             "top_p": 1,
@@ -971,14 +963,22 @@ def chatbot_api(request):
         context = """You are a helpful AI assistant for CTF Academy, a LeetCode-style learning platform for offensive cybersecurity. 
 
 CTF Academy offers:
+- Logical challenges focused on reasoning and problem-solving
+- Sandboxed environments for safe practice
+- Leaderboards and streak tracking for motivation
+- Various cybersecurity categories (Web, Crypto, Forensics, etc.)
 
 Answer questions about:
+- Cybersecurity concepts and techniques
+- CTF challenge strategies and hints
+- Platform features and navigation
+- Offensive security topics
 
 Be helpful, encouraging, and educational. Keep responses concise and actionable."""
         
         full_prompt = f"{context}\n\nUser: {user_message}\n\nAssistant:"
         
-        # Try the working models for this API key (Gemini 2.0/2.5)
+        # Try multiple models for compatibility
         model_attempts = [
             'gemini-2.5-flash',
             'gemini-2.0-flash',
@@ -1005,7 +1005,11 @@ Be helpful, encouraging, and educational. Keep responses concise and actionable.
         
         if not response_text:
             fallback_text = "Our AI helper is temporarily unavailable. Review challenge writeups, revisit fundamentals, and keep practicing defensive enumeration until service resumes."
-            return success_response({'response': fallback_text}, meta={'fallback': True}, message='Serving cached guidance while the AI model recovers.')
+            return success_response(
+                {'response': fallback_text}, 
+                meta={'fallback': True}, 
+                message='Serving cached guidance while the AI model recovers.'
+            )
         
         return success_response({'response': response_text})
         
@@ -1016,8 +1020,11 @@ Be helpful, encouraging, and educational. Keep responses concise and actionable.
     except Exception as e:
         logger.exception("Chatbot API error")
         fallback_text = "Our AI helper hit a snag. In the meantime, break challenges into recon -> scanning -> exploitation steps and keep notes for each attempt."
-        return success_response({'response': fallback_text}, meta={'fallback': True}, message='Using safe fallback guidance while the AI restarts.')
-        
+        return success_response(
+            {'response': fallback_text}, 
+            meta={'fallback': True}, 
+            message='Using safe fallback guidance while the AI restarts.'
+        )
 
 # ============================================================================
 # 1. ENHANCED ADMIN DASHBOARD

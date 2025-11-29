@@ -6,6 +6,7 @@ from django.http import HttpRequest, HttpResponse, JsonResponse
 
 from django_ratelimit.decorators import ratelimit
 
+
 TOO_MANY_REQUESTS_MESSAGE = "Too many requests — please try again."
 
 
