@@ -40,6 +40,7 @@ TAILWIND_APP_NAME = 'theme'
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
+    'accounts.middleware.RequestTimeoutMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
@@ -66,6 +67,7 @@ TEMPLATES = [
 ]
 
 WSGI_APPLICATION = 'ctf_academy.wsgi.application'
+ASGI_APPLICATION = 'ctf_academy.asgi.application'
 
 DATABASES = {
     'default': {
@@ -80,6 +82,12 @@ DATABASES = {
         },
     }
 }
+
+DATABASES['default']['CONN_MAX_AGE'] = env.int('DB_CONN_MAX_AGE', default=60)
+db_options = DATABASES['default'].setdefault('OPTIONS', {})
+db_options['connect_timeout'] = env.int('DB_CONNECT_TIMEOUT', default=5)
+statement_timeout = env.int('DB_STATEMENT_TIMEOUT_MS', default=5000)
+db_options['options'] = f"-c statement_timeout={statement_timeout}"
 
 AUTH_PASSWORD_VALIDATORS = [
     {'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator'},
@@ -114,10 +122,41 @@ SESSION_COOKIE_AGE = 1800  # Session expires after 30 minutes of inactivity.
 SESSION_EXPIRE_AT_BROWSER_CLOSE = True # Logs user out when they close their browser.
 LOGIN_URL = 'login_page' # Redirects to this URL name if a user tries to access a protected page.
 
+default_cache_url = env('CACHE_URL', default='')
+if default_cache_url:
+    CACHES = {
+        'default': {
+            'BACKEND': 'django_redis.cache.RedisCache',
+            'LOCATION': default_cache_url,
+            'OPTIONS': {
+                'CLIENT_CLASS': 'django_redis.client.DefaultClient',
+            },
+        }
+    }
+else:
+    CACHES = {
+        'default': {
+            'BACKEND': 'django.core.cache.backends.locmem.LocMemCache',
+            'LOCATION': 'ctf-academy-cache',
+        }
+    }
+
+CACHE_TTL = env.int('CACHE_TTL', default=60)
+REQUEST_TIMEOUT_SECONDS = env.int('REQUEST_TIMEOUT_SECONDS', default=15)
+
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': (
         'rest_framework_simplejwt.authentication.JWTAuthentication',
-    )
+    ),
+    'DEFAULT_THROTTLE_CLASSES': (
+        'rest_framework.throttling.AnonRateThrottle',
+        'rest_framework.throttling.UserRateThrottle',
+    ),
+    'DEFAULT_THROTTLE_RATES': {
+        'anon': env('DRF_ANON_RATE', default='30/min'),
+        'user': env('DRF_USER_RATE', default='120/min'),
+    },
+    'EXCEPTION_HANDLER': 'accounts.api.exception_handler',
 }
 
 SIMPLE_JWT = {
