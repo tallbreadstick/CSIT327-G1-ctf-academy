@@ -217,9 +217,9 @@
                 if (welcomeMsg) {
                     messages.appendChild(welcomeMsg);
                 }
-                // Restore messages
+                // Restore messages - they will be properly formatted by addMessage
                 chatHistory.forEach(msg => {
-                    addMessage(msg.content, msg.isUser, false);
+                    addMessageFromHistory(msg.content, msg.isUser, msg.isFormatted);
                 });
             }
         } catch (error) {
@@ -234,15 +234,17 @@
             const history = [];
             
             messageElements.forEach(el => {
-                // Skip the welcome message
-                if (el.querySelector('.text-gray-400')) return;
+                // Skip the welcome message and typing indicator
+                if (el.querySelector('.text-gray-400') || el.id === 'typing-indicator') return;
                 
                 const isUser = el.classList.contains('justify-end');
                 const textEl = el.querySelector('p');
                 if (textEl) {
+                    // Store innerHTML for AI messages (formatted), textContent for user messages
                     history.push({
-                        content: textEl.innerHTML,
-                        isUser: isUser
+                        content: isUser ? textEl.textContent : textEl.innerHTML,
+                        isUser: isUser,
+                        isFormatted: !isUser
                     });
                 }
             });
@@ -367,6 +369,33 @@
         if (shouldSave) {
             saveChatHistory();
         }
+    }
+
+    function addMessageFromHistory(content, isUser, isFormatted) {
+        const messageDiv = document.createElement('div');
+        messageDiv.className = 'flex items-start space-x-2 ' + (isUser ? 'justify-end' : '');
+        
+        if (isUser) {
+            messageDiv.innerHTML = `
+                <div class="bg-gradient-to-r from-pink-600 to-pink-700 rounded-2xl px-3 py-2 max-w-[85%]">
+                    <p class="text-white text-sm">${escapeHtml(content)}</p>
+                </div>
+            `;
+        } else {
+            messageDiv.innerHTML = `
+                <div class="h-6 w-6 rounded-full bg-gradient-to-br from-pink-500 to-pink-600 flex items-center justify-center flex-shrink-0">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-white" viewBox="0 0 20 20" fill="currentColor">
+                        <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd" />
+                    </svg>
+                </div>
+                <div class="bg-gray-800 rounded-2xl px-3 py-2 max-w-[85%] border border-gray-700">
+                    <p class="text-gray-100 text-sm">${isFormatted ? content : formatMessage(content)}</p>
+                </div>
+            `;
+        }
+        
+        messages.appendChild(messageDiv);
+        messages.scrollTop = messages.scrollHeight;
     }
 
     function addTypingIndicator() {
