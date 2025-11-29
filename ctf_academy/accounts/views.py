@@ -1,7 +1,10 @@
 from django.contrib.auth import authenticate, login, logout, update_session_auth_hash
 from django.contrib.auth.models import User
 from django.contrib.auth.password_validation import validate_password
+from django.conf import settings
+from django.core.cache import cache
 from django.core.exceptions import ValidationError
+from collections import defaultdict
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework import status
@@ -9,41 +12,29 @@ from django.shortcuts import render, redirect, get_object_or_404
 from django.urls import reverse
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required, user_passes_test
-from .models import Challenge, Category, UserProfile, Favorite, ChallengeProgress
-from django.db.models import Sum, Q, Case, When, IntegerField
+from django.db.models import Sum, Q, Case, When, IntegerField, Count
 from django.http import JsonResponse, HttpResponseBadRequest
 import traceback
 from django.views.decorators.csrf import csrf_exempt
 from django.utils import timezone
-
-# --- ADDED IMPORTS FOR JWT AND API PROTECTION ---
-from .serializers import MyTokenObtainPairSerializer
-from rest_framework_simplejwt.views import TokenObtainPairView
 from rest_framework.permissions import IsAuthenticated
-
 import google.generativeai as genai
-from django.conf import settings
-from django.http import JsonResponse
 import json
-
-
-from django.db.models import Count, Sum, Q
 from django.db.models.functions import TruncDate
 from datetime import timedelta
 from django.core.paginator import Paginator
-from django.utils import timezone
+from rest_framework_simplejwt.views import TokenObtainPairView
+
+from .models import Challenge, Category, UserProfile, Favorite, ChallengeProgress
+from .serializers import MyTokenObtainPairSerializer
+from .decorators import friendly_ratelimit
 
 
-# --- NEW VIEW TO GENERATE TOKEN WITH CUSTOM PAYLOAD ---
+# --- ADDED IMPORTS FOR JWT AND API PROTECTION ---
+
+
 class MyTokenObtainPairView(TokenObtainPairView):
     serializer_class = MyTokenObtainPairSerializer
-
-
-
-
-# --- REMOVED THE OLD LoginView(APIView) CLASS ---
-# The class above replaces it and handles token generation automatically.
-
 
 
 class RegisterView(APIView):
@@ -62,9 +53,7 @@ class RegisterView(APIView):
         user = User.objects.create_user(username=username, email=email, password=password)
         return Response({"message": "User registered successfully!"}, status=status.HTTP_201_CREATED)
 
-# --- EXAMPLE OF A PROTECTED API ENDPOINT ---
-# Any request to this view must include a valid JWT in the Authorization header.
-# The library automatically rejects expired, tampered, or invalid tokens.
+
 class ProtectedDataView(APIView):
     permission_classes = [IsAuthenticated]
 
@@ -72,18 +61,88 @@ class ProtectedDataView(APIView):
         content = {'message': 'This is protected data, you are authenticated!'}
         return Response(content)
 
-# ========== HTML PAGE VIEWS (Unchanged but with protection examples) ==========
+
+CACHE_TTL = getattr(settings, "CACHE_TTL", 60)
+
+
+def get_cached_categories():
+    return cache.get_or_set(
+        "categories:ordered",
+        lambda: list(Category.objects.all().order_by("name")),
+        CACHE_TTL,
+    )
+
+
+def get_leaderboard_snapshot():
+    cache_key = "leaderboard:snapshot"
+
+    def _build_snapshot():
+        progress_rows = (
+            ChallengeProgress.objects.filter(status=ChallengeProgress.Status.COMPLETED)
+            .select_related("challenge")
+        )
+        points_map = defaultdict(int)
+        completed_count_map = defaultdict(int)
+        completion_dates_map = defaultdict(set)
+        for row in progress_rows:
+            if row.challenge_id and row.challenge:
+                points_map[row.user_id] += row.challenge.points
+            completed_count_map[row.user_id] += 1
+            if row.completed_at:
+                local_date = timezone.localtime(row.completed_at).date()
+                completion_dates_map[row.user_id].add(local_date)
+
+        users_qs = User.objects.filter(is_active=True).order_by("username").select_related("profile")
+        today = timezone.localtime(timezone.now()).date()
+        yesterday = today - timedelta(days=1)
+
+        leaders = []
+        for user in users_qs:
+            image_uri = None
+            profile = getattr(user, "profile", None)
+            if profile:
+                try:
+                    img_b64 = profile.get_base64_image()
+                    if img_b64:
+                        image_uri = f"data:image/jpeg;base64,{img_b64}"
+                except Exception:
+                    image_uri = None
+
+            dates = completion_dates_map.get(user.id, set())
+            streak = 0
+            if dates:
+                cursor = today if today in dates else (yesterday if yesterday in dates else None)
+                while cursor and cursor in dates:
+                    streak += 1
+                    cursor -= timedelta(days=1)
+
+            leaders.append({
+                "id": user.id,
+                "username": user.username,
+                "points": points_map.get(user.id, 0),
+                "challenges": completed_count_map.get(user.id, 0),
+                "streak": streak,
+                "image_uri": image_uri,
+                "date_joined": user.date_joined,
+            })
+
+        leaders.sort(key=lambda r: (-r["points"], r["username"]))
+        return leaders
+
+    return cache.get_or_set(cache_key, _build_snapshot, CACHE_TTL)
+
 
 def home_page(request):
     if request.user.is_authenticated and request.user.is_superuser:
         return redirect("admin_dashboard_page")
     return render(request, "accounts/home.html")
 
+
 def about_page(request):
     return render(request, "accounts/about.html")
 
+
 def register_page(request):
-    # This view remains unchanged
     if request.method == "POST":
         username = request.POST.get("username")
         email = request.POST.get("email")
@@ -108,6 +167,7 @@ def register_page(request):
         messages.success(request, "Account created successfully! You can log in now.")
         return redirect("login_page")
     return render(request, "accounts/register.html")
+
 
 def login_page(request):
     # If user is already logged in, redirect them
@@ -245,11 +305,12 @@ def profile_page(request):
 
 
 @login_required
+@friendly_ratelimit(rate='30/m', method='GET')
 def challenges_page(request):
     user = request.user
 
     # --- Basic collections ---
-    categories = Category.objects.all().order_by("name")
+    categories = get_cached_categories()
     qs = Challenge.objects.filter(is_active=True).select_related("category")
 
     # --- Filters from query string ---
@@ -384,7 +445,7 @@ def challenges_page(request):
         "completed": completed_count,
         "in_progress": in_progress_count,
         "points_earned": points_earned,
-        "categories_count": categories.count(),
+        "categories_count": len(categories),
     }
 
     context = {
@@ -404,84 +465,16 @@ def challenges_page(request):
 
 
 @login_required
+@friendly_ratelimit(rate='20/m', method='GET')
 def leaderboards_page(request):
-    """
-    Dynamic leaderboards backed by the existing database.
-    There is no scoring system yet, so everyone is shown with 0 points.
-    Ordering falls back to most recent users first so the page looks alive.
-    """
-    # Pull active users from DB (Supabase Postgres via Django settings)
-    users_qs = User.objects.filter(is_active=True).order_by("username")
-
-    # Preload progress for all users to compute points from completed challenges
-    from collections import defaultdict
-    from datetime import timedelta
-    
-    progress_rows = ChallengeProgress.objects.filter(status=ChallengeProgress.Status.COMPLETED)
-    points_map = defaultdict(int)
-    completed_count_map = defaultdict(int)
-    completion_dates_map = defaultdict(set)
-
-    for p in progress_rows.select_related("challenge"):
-        points_map[p.user_id] += p.challenge.points
-        completed_count_map[p.user_id] += 1
-        if p.completed_at:
-            local_date = timezone.localtime(p.completed_at).date()
-            completion_dates_map[p.user_id].add(local_date)
-
-    # Calculate streaks
-    streak_map = {}
-    today = timezone.localtime(timezone.now()).date()
-    yesterday = today - timedelta(days=1)
-
-    for user_id, dates in completion_dates_map.items():
-        streak = 0
-        check_date = today
-        
-        if check_date not in dates:
-            if yesterday in dates:
-                check_date = yesterday
-            else:
-                streak_map[user_id] = 0
-                continue
-
-        while check_date in dates:
-            streak += 1
-            check_date -= timedelta(days=1)
-        
-        streak_map[user_id] = streak
-
-    leaders = []
-    for u in users_qs:
-        image_uri = None
-        try:
-            if hasattr(u, "profile"):
-                img_b64 = u.profile.get_base64_image()
-                if img_b64:
-                    image_uri = f"data:image/jpeg;base64,{img_b64}"
-        except Exception:
-            image_uri = None
-
-        leaders.append({
-            "id": u.id,
-            "username": u.username,
-            "points": points_map.get(u.id, 0),
-            "challenges": completed_count_map.get(u.id, 0),
-            "streak": streak_map.get(u.id, 0),
-            "image_uri": image_uri,
-            "date_joined": u.date_joined,
-        })
-
-    # Order leaders by points desc then username
-    leaders.sort(key=lambda r: (-r["points"], r["username"]))
-    top = leaders[:3]
-    rest = leaders[3:]
+    snapshot = list(get_leaderboard_snapshot())
+    top = snapshot[:3]
+    rest = snapshot[3:]
     start_rank = len(top) + 1
 
-    # Current user's rank (1-based) if present in list
     current_user_rank = None
     current_user_stats = None
-    for idx, row in enumerate(leaders, start=1):
+    for idx, row in enumerate(snapshot, start=1):
         if row["id"] == request.user.id:
             current_user_rank = idx
             current_user_stats = row
@@ -490,7 +483,7 @@ def leaderboards_page(request):
     context = {
         "top": top,
         "leaders": rest,
-        "all_leaders": leaders,  # optional full list if template needs it
+        "all_leaders": snapshot,
         "current_user_rank": current_user_rank,
         "current_user_stats": current_user_stats,
         "start_rank": start_rank,
@@ -499,10 +492,11 @@ def leaderboards_page(request):
     return render(request, "accounts/leaderboards.html", context)
 
 @login_required
+@friendly_ratelimit(rate='60/m', method='GET')
 def challenge_detail(request, slug):
     # Fetch the challenge
     challenge = get_object_or_404(Challenge, slug=slug)
-    categories = Category.objects.all()
+    categories = get_cached_categories()
 
     # Build initial content for the text editor
     initial_content = f"""Challenge: {challenge.title}
@@ -590,6 +584,7 @@ Type commands in the Terminal window. Use 'help' for generic terminal help.
 
 
 @login_required
+@friendly_ratelimit(rate='60/m', method='POST')
 def toggle_favorite(request, challenge_id: int):
     if request.method != "POST":
         return HttpResponseBadRequest("POST required")
@@ -617,6 +612,7 @@ def favorites_page(request):
 
 
 @login_required
+@friendly_ratelimit(rate='60/m', method='POST')
 @csrf_exempt  # Prototype: remove when front-end CSRF stable
 def save_progress(request, challenge_id: int):
     """Persist user's last_state for a challenge and mark save as successful.
@@ -650,6 +646,7 @@ def save_progress(request, challenge_id: int):
 
 
 @login_required
+@friendly_ratelimit(rate='60/m', method='POST')
 @csrf_exempt  # Prototype: remove when front-end CSRF stable
 def update_challenge_status(request, challenge_id: int):
     """Update a user's ChallengeProgress status via simple POST.
@@ -694,6 +691,7 @@ def update_challenge_status(request, challenge_id: int):
 
 
 @login_required
+@friendly_ratelimit(rate='90/m', method='POST')
 @csrf_exempt
 def api_mark_inprogress(request):
     """Endpoint /inprogress
@@ -733,6 +731,7 @@ def api_mark_inprogress(request):
 
 
 @login_required
+@friendly_ratelimit(rate='90/m', method='POST')
 @csrf_exempt
 def api_mark_complete(request):
     """Endpoint /complete
@@ -1401,7 +1400,7 @@ def admin_user_progress(request, user_id):
 @user_passes_test(is_admin)
 def admin_category_stats(request):
     """Get statistics grouped by category"""
-    categories = Category.objects.all()
+    categories = get_cached_categories()
     
     category_stats = []
     
