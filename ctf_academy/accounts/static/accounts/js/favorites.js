@@ -12,24 +12,43 @@
     document.body.appendChild(el);
     setTimeout(()=>el.remove(), 2200);
   }
+  function updateIconState(btn, on){
+    btn.classList.toggle('favorite-on', on);
+    const icon = btn.querySelector('i, svg');
+    if(!icon) return;
+    icon.classList.toggle('fas', on);
+    icon.classList.toggle('far', !on);
+    icon.classList.toggle('fa-solid', on);
+    icon.classList.toggle('fa-regular', !on);
+    icon.classList.toggle('text-yellow-400', on);
+    icon.classList.toggle('text-gray-500', !on);
+  }
+  function applyState(btn, on){
+    btn.dataset.favorited = on ? '1':'0';
+    btn.setAttribute('aria-pressed', on ? 'true':'false');
+    updateIconState(btn, on);
+  }
   async function toggle(btn){
+    if(btn.dataset.loading === '1') return;
     const url = btn.getAttribute('data-toggle-url');
+    const previous = btn.dataset.favorited === '1';
+    const optimistic = !previous;
+    applyState(btn, optimistic);
+    btn.dataset.loading = '1';
     try{
       const res = await fetch(url, {method: 'POST', headers:{'X-CSRFToken': getCookie('csrftoken'), 'X-Requested-With':'XMLHttpRequest'}});
       const data = await res.json();
-      if(!res.ok || data.error){ throw new Error(data.error || 'Failed'); }
-      const on = !!data.favorited;
-      btn.dataset.favorited = on ? '1':'0';
-      btn.setAttribute('aria-pressed', on ? 'true':'false');
-      const i = btn.querySelector('i');
-      if(i){
-        i.classList.toggle('fas', on);
-        i.classList.toggle('far', !on);
-        i.classList.toggle('text-yellow-400', on);
-        i.classList.toggle('text-gray-500', !on);
+      if(!res.ok || data.error || data.success === false){
+        throw new Error(data.message || data.error || 'Failed');
       }
+      const payload = data && typeof data === 'object' && 'data' in data ? data.data : data;
+      const on = !!(payload && payload.favorited);
+      applyState(btn, on);
     }catch(e){
+      applyState(btn, previous);
       toast('Unable to save favorite. Please try again.');
+    }finally{
+      delete btn.dataset.loading;
     }
   }
   function bind(){
