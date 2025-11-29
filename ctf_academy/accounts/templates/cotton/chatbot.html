@@ -130,12 +130,91 @@
     const loading = document.getElementById('chatbot-loading');
     const quickQuestions = document.querySelectorAll('.chatbot-quick-question');
 
+    // Session storage keys
+    const STORAGE_KEY = 'ctf_chatbot_history';
+    const WINDOW_STATE_KEY = 'ctf_chatbot_window_state';
+
+    // Load chat history from session storage
+    function loadChatHistory() {
+        try {
+            const history = sessionStorage.getItem(STORAGE_KEY);
+            if (history) {
+                const chatHistory = JSON.parse(history);
+                // Clear existing messages except welcome message
+                const welcomeMsg = messages.querySelector('.flex.items-start.space-x-2');
+                messages.innerHTML = '';
+                if (welcomeMsg) {
+                    messages.appendChild(welcomeMsg);
+                }
+                // Restore messages
+                chatHistory.forEach(msg => {
+                    addMessage(msg.content, msg.isUser, false);
+                });
+            }
+        } catch (error) {
+            console.error('Failed to load chat history:', error);
+        }
+    }
+
+    // Save chat history to session storage
+    function saveChatHistory() {
+        try {
+            const messageElements = messages.querySelectorAll('.flex.items-start');
+            const history = [];
+            
+            messageElements.forEach(el => {
+                // Skip the welcome message
+                if (el.querySelector('.text-gray-400')) return;
+                
+                const isUser = el.classList.contains('justify-end');
+                const textEl = el.querySelector('p');
+                if (textEl) {
+                    history.push({
+                        content: textEl.innerHTML,
+                        isUser: isUser
+                    });
+                }
+            });
+            
+            sessionStorage.setItem(STORAGE_KEY, JSON.stringify(history));
+        } catch (error) {
+            console.error('Failed to save chat history:', error);
+        }
+    }
+
+    // Load window state
+    function loadWindowState() {
+        try {
+            const state = sessionStorage.getItem(WINDOW_STATE_KEY);
+            if (state === 'open') {
+                window.classList.remove('hidden');
+                toggle.classList.add('hidden');
+            }
+        } catch (error) {
+            console.error('Failed to load window state:', error);
+        }
+    }
+
+    // Save window state
+    function saveWindowState(isOpen) {
+        try {
+            sessionStorage.setItem(WINDOW_STATE_KEY, isOpen ? 'open' : 'closed');
+        } catch (error) {
+            console.error('Failed to save window state:', error);
+        }
+    }
+
+    // Initialize - load saved state
+    loadChatHistory();
+    loadWindowState();
+
     // Toggle chatbot window
     toggle.addEventListener('click', () => {
         const isHidden = window.classList.contains('hidden');
         if (isHidden) {
             window.classList.remove('hidden');
             toggle.classList.add('hidden');
+            saveWindowState(true);
             input.focus();
         }
     });
@@ -144,6 +223,7 @@
     close.addEventListener('click', () => {
         window.classList.add('hidden');
         toggle.classList.remove('hidden');
+        saveWindowState(false);
     });
 
     // Get CSRF token
@@ -175,7 +255,7 @@
         return text;
     }
 
-    function addMessage(content, isUser) {
+    function addMessage(content, isUser, shouldSave = true) {
         const messageDiv = document.createElement('div');
         messageDiv.className = 'flex items-start space-x-2 ' + (isUser ? 'justify-end' : '');
         
@@ -200,6 +280,11 @@
         
         messages.appendChild(messageDiv);
         messages.scrollTop = messages.scrollHeight;
+        
+        // Save to session storage
+        if (shouldSave) {
+            saveChatHistory();
+        }
     }
 
     async function sendMessage(message) {
