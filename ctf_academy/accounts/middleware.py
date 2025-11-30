@@ -1,9 +1,9 @@
 from __future__ import annotations
 
 import logging
-import signal
 import time
 from typing import Callable
+import concurrent.futures
 
 from django.conf import settings
 from django.http import HttpRequest, HttpResponse, JsonResponse
@@ -16,29 +16,22 @@ class RequestTimedOut(Exception):
 
 
 class RequestTimeoutMiddleware:
-    """Ensures long-running requests terminate with a friendly 504 response.
+    """
+    Ensures long-running requests terminate with a friendly 504 response.
 
-    On Unix platforms we rely on SIGALRM to interrupt the request processing.
-    On platforms without SIGALRM (e.g. Windows) we fallback to measuring the
-    elapsed time and returning a timeout response if the threshold is exceeded.
+    Uses a thread-based timeout to be safe in multi-threaded servers
+    (like Render, Gunicorn, uWSGI). No SIGALRM is used.
     """
 
     def __init__(self, get_response: Callable[[HttpRequest], HttpResponse]):
         self.get_response = get_response
         self.timeout_seconds = getattr(settings, "REQUEST_TIMEOUT_SECONDS", 15)
-        self.supports_alarm = hasattr(signal, "SIGALRM")
 
     def __call__(self, request: HttpRequest) -> HttpResponse:
         if self.timeout_seconds <= 0:
             return self.get_response(request)
 
-        start = time.monotonic()
-        if self.supports_alarm:
-            response = self._run_with_alarm(request)
-        else:
-            response = self._run_with_timer(request)
-
-        return response
+        return self._run_with_thread_timeout(request)
 
     def _timeout_response(self, request: HttpRequest) -> HttpResponse:
         message = "Request timed out — please try again."
@@ -51,28 +44,15 @@ class RequestTimeoutMiddleware:
             return JsonResponse(payload, status=504)
         return HttpResponse(message, status=504)
 
-    def _run_with_alarm(self, request: HttpRequest) -> HttpResponse:
-        def _handler(signum, frame):  # pragma: no cover - signal handler
-            raise RequestTimedOut()
-
-        old_handler = signal.getsignal(signal.SIGALRM)
-        signal.signal(signal.SIGALRM, _handler)
-        signal.setitimer(signal.ITIMER_REAL, self.timeout_seconds)
-        try:
-            response = self.get_response(request)
-        except RequestTimedOut:
-            logger.warning("Request exceeded %s seconds (SIGALRM)", self.timeout_seconds)
-            return self._timeout_response(request)
-        finally:
-            signal.setitimer(signal.ITIMER_REAL, 0)
-            signal.signal(signal.SIGALRM, old_handler)
-        return response
-
-    def _run_with_timer(self, request: HttpRequest) -> HttpResponse:
-        start = time.monotonic()
-        response = self.get_response(request)
-        elapsed = time.monotonic() - start
-        if elapsed > self.timeout_seconds:
-            logger.warning("Request exceeded %s seconds (fallback timer)", self.timeout_seconds)
-            return self._timeout_response(request)
+    def _run_with_thread_timeout(self, request: HttpRequest) -> HttpResponse:
+        """
+        Runs the request in a separate thread and enforces a timeout.
+        """
+        with concurrent.futures.ThreadPoolExecutor(max_workers=1) as executor:
+            future = executor.submit(self.get_response, request)
+            try:
+                response = future.result(timeout=self.timeout_seconds)
+            except concurrent.futures.TimeoutError:
+                logger.warning("Request exceeded %s seconds (thread timeout)", self.timeout_seconds)
+                return self._timeout_response(request)
         return response
