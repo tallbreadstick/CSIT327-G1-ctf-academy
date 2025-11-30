@@ -1,0 +1,124 @@
+1. Baby Steps (Easy)
+
+- Target host machine exposes endpoint for flag
+- Endpoint does not provide authentication
+- Simply connect to the endpoint and take the flag
+
+2. Ring Around The Rosie (Medium)
+
+- The challenge has multiple host machines in a ring topology
+- Each host machine contains a flag to capture
+- Each host machine exposes an endpoint for flag capture, but requires a password
+- Each host machine also contains a vulnerable entry that reveals the password to the next host
+- Follow the ring and capture all the flags
+
+3. Binary Search Password (Medium)
+
+- A single host machine contains the flag to capture
+- The host machine exposes a password guarded endpoint
+- If the given password is wrong, it reveals whether the one you provided was lexicographically lower or higher than required
+- Binary search the password using the endpoint's feedback to narrow the search for the real password
+
+4. PIN Crack (Easy)
+
+- A single host machine guards the flag behind an endpoint that accepts a 4-digit PIN code
+- Use simple brute force checking to crack the PIN and capture the flag
+
+5. Needle In Haystack (Hard)
+
+- The challenge contains several host machines
+- The user will have to leverage scripts to crawl the network and locate the flag
+- Each host has relatively weak security which should be easy to crawl and crack
+
+6. Bobby Tables (Easy)
+
+- The challenge contains a single host machine
+- Connecting its server gives a form for student information entry
+- Drop the whole 'student' table in order to pass the challenge
+- Use an SQL injection on the form to drop the table
+
+7. Location On The Flyer (Easy)
+
+- A single host machine provides a web page containing some forms
+- The developers got lazy and put some secret keys in their frontend code
+- View the page source and use the secret keys to breach their security
+
+8. We Will Rock You (Easy)
+
+- A popular social media page has had all its passwords leaked
+- A certain user of this platform is your target
+- Use the leaks to brute force crack their password
+
+9. Identity Theft (Medium)
+
+- The challenge contains two host machines
+- One host's firewall rules only allow connections from the other host
+- The other host has weaker auth which can be exploited
+- Use the other host to access the secure host and capture the flag
+
+10. Crawl And Conquer (Hard)
+
+- The challenge contains several host machines, each with strict firewall rules
+- Each host only allows another random host in the network to connect to it
+- If all host dependents form a graph, there will end up at least 1 disjoint graphs
+- Each connected graph has 1 weak link, which can directly be accessed publicly
+- Find the weak links, crawl through the network, and capture all flags on every host machine
+
+11. Man In The Middle I (Medium)
+
+- Two host machines are in a single network
+- Both hosts regularly share information through messages
+- This transmission channel is over an unencrypted HTTP connection
+- Use a packet analyzer to find secrets and capture the flag
+
+12. Man In The Middle II (Medium)
+
+- Two host machines are regularly communicating over a HTTP stream
+- The protocol is unencrypted, but another encryption layer occurs in their backend
+- Part of their shared encryption strategy relies on sending a key before the message
+- Intercept the key and use it to decrypt any messages
+- Find the secret among the decrypted messages to capture the flag
+
+13. Plaintext Passwords (Easy)
+
+- A host machine exposes a service with an auth layer
+- The database stores the passwords as plain text
+- Use an SQL Injection attack to leak user passwords
+- Log into their auth service using these leaks to capture the flag
+
+14. Session Hijack (Medium)
+
+- Two host machines are connected on the same network
+- One is a client to the other's web service
+- The client has already logged in over a secure channel
+- However, the client's machine is vulnerable and you can take their auth token
+- Inject their valid token into your own requests to bypass validation to capture the flag
+
+15. Minotaur's Labyrinth (Hard)
+
+- A large network contains ~30 hosts
+- Each host is either a keystore or a gateway
+- Gateways lead to other gateways by firewall restrictions
+- Gateways need to compute a hash from a certain set of keystores to move to the next one
+- The final gateway reaches a central, otherwise inaccessible host which carries the flag
+- Gateways are scheduled to be reassigned to new keystores periodically
+- Keystores are also scheduled to periodically rotate their keys
+- Gateways have rate-limited APIs, so one cannot excessively make queries
+- Challengers must utilize scripts to crawl the network and uncover secrets before they change
+- Find the weakest link at any given moment and crawl up the chain to reach the flag
+
+16. Starry Starry Night (Hard)
+
+- A service on a central network is receiving traffic from a larger open network
+- This traffic comes in the form of packets of "game data" which is filtered by an anti-cheat software
+- This software uses statistical models to validate packets as natural or flag them for cheats
+- The goal of this challenge is to send some large number of cheat packets and pass them off as natural
+- Use a series of packet sniffers to collect data across the network and learn the natural skewness of the distribution
+- Once enough packets bypass the system without being flagged for cheating, the flag has been captured
+
+17. Root Cause (Easy)
+
+- A single host contains a flag to capture
+- This host guards the flag behind root privileges
+- This challenge provides you with a payload that exploits an OS-level vulnerability and escalates privileges
+- Use this to SSH into the remote terminal and seize the flag
