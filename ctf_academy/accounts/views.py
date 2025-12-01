@@ -15,6 +15,7 @@ from django.http import JsonResponse, HttpResponseBadRequest
 import traceback
 from django.views.decorators.csrf import csrf_exempt
 from django.utils import timezone
+from django.utils.http import url_has_allowed_host_and_scheme
 
 # --- ADDED IMPORTS FOR JWT AND API PROTECTION ---
 from .serializers import MyTokenObtainPairSerializer
@@ -32,6 +33,18 @@ from django.db.models.functions import TruncDate
 from datetime import timedelta
 from django.core.paginator import Paginator
 from django.utils import timezone
+# --- ADMIN VIEW MODE FLAGS ---
+ADMIN_VIEW_SESSION_KEY = "admin_view_mode"
+ADMIN_VIEW_MODE_ADMIN = "admin"
+ADMIN_VIEW_MODE_USER = "user"
+
+
+def get_admin_view_mode(request):
+    return request.session.get(ADMIN_VIEW_SESSION_KEY, ADMIN_VIEW_MODE_ADMIN)
+
+
+def set_admin_view_mode(request, mode):
+    request.session[ADMIN_VIEW_SESSION_KEY] = mode
 
 
 # --- NEW VIEW TO GENERATE TOKEN WITH CUSTOM PAYLOAD ---
@@ -76,7 +89,8 @@ class ProtectedDataView(APIView):
 
 def home_page(request):
     if request.user.is_authenticated and request.user.is_superuser:
-        return redirect("admin_dashboard_page")
+        if get_admin_view_mode(request) != ADMIN_VIEW_MODE_USER:
+            return redirect("admin_dashboard_page")
     return render(request, "accounts/home.html")
 
 def about_page(request):
@@ -125,8 +139,10 @@ def login_page(request):
             login(request, user)
             # Redirect without message
             if user.is_superuser:
+                set_admin_view_mode(request, ADMIN_VIEW_MODE_ADMIN)
                 return redirect("admin_dashboard_page")
             else:
+                request.session.pop(ADMIN_VIEW_SESSION_KEY, None)
                 return redirect("home")
         else:
             messages.error(request, "Invalid credentials")
@@ -933,6 +949,7 @@ Be helpful, encouraging, and educational. Keep responses concise and actionable.
 @user_passes_test(is_admin)
 def admin_dashboard_page(request):
     """Enhanced admin dashboard with comprehensive analytics"""
+    set_admin_view_mode(request, ADMIN_VIEW_MODE_ADMIN)
     
     # === USER STATISTICS ===
     total_users = User.objects.filter(is_active=True).count()
@@ -1061,6 +1078,20 @@ def admin_dashboard_page(request):
     }
     
     return render(request, "accounts/admin_dashboard.html", context)
+
+
+@login_required
+@user_passes_test(is_admin)
+def switch_admin_view_mode(request):
+    mode = request.GET.get("mode", ADMIN_VIEW_MODE_ADMIN)
+    target_mode = mode if mode in {ADMIN_VIEW_MODE_ADMIN, ADMIN_VIEW_MODE_USER} else ADMIN_VIEW_MODE_ADMIN
+    set_admin_view_mode(request, target_mode)
+
+    next_url = request.GET.get("next")
+    if not next_url or not url_has_allowed_host_and_scheme(next_url, allowed_hosts={request.get_host()}):
+        fallback = "home" if target_mode == ADMIN_VIEW_MODE_USER else "admin_dashboard_page"
+        next_url = reverse(fallback)
+    return redirect(next_url)
 
 
 # ============================================================================
