@@ -82,6 +82,17 @@
                 </div>
 
                 <div class="flex items-center space-x-4">
+                    {% if admin_view_mode == 'user' %}
+                    <a href="{% url 'switch_admin_view_mode' %}?mode=admin&next={% url 'admin_dashboard_page' %}"
+                       class="px-3 py-1.5 bg-gray-700 hover:bg-gray-600 rounded-lg text-sm transition">
+                        Return to Admin View
+                    </a>
+                    {% else %}
+                    <a href="{% url 'switch_admin_view_mode' %}?mode=user&next={% url 'challenges_page' %}"
+                       class="px-3 py-1.5 bg-green-600/20 text-green-300 border border-green-500/40 rounded-lg text-sm hover:bg-green-600/30 transition">
+                        View as User
+                    </a>
+                    {% endif %}
                     <button onclick="exportData('users')" class="px-3 py-1.5 bg-pink-600/20 text-pink-400 border border-pink-600/50 rounded-lg text-sm hover:bg-pink-600/30 transition">
                         Export Data
                     </button>

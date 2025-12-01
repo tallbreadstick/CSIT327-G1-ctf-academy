@@ -31,6 +31,7 @@ from .views import (
     admin_challenge_analytics,
     admin_category_stats,
     admin_export_data,
+    switch_admin_view_mode,
 )
 from rest_framework_simplejwt.views import TokenRefreshView
 
@@ -70,6 +71,7 @@ urlpatterns = [
     # === ADMIN ENDPOINTS ===
     # User Management
     path("admin/dashboard/", admin_dashboard_page, name="admin_dashboard_page"),
+    path("admin/switch-view/", switch_admin_view_mode, name="switch_admin_view_mode"),
     path("admin/users/", admin_users_page, name="admin_users_page"),
     path("api/admin/users/", admin_users_list, name="admin_users_list"),
     path("api/admin/users/<int:user_id>/", admin_user_detail, name="admin_user_detail"),  # ADD THIS LINE
