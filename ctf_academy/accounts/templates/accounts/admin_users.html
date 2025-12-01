@@ -943,8 +943,10 @@
         document.getElementById(modalId).classList.remove("hidden");
       }
 
-      async function handleApiCall(url, options = {}) {
+            async function handleApiCall(url, options = {}) {
     try {
+        console.log('API Call:', url, options);
+        
         const response = await fetch(url, {
             headers: {
                 'Content-Type': 'application/json',
@@ -954,15 +956,16 @@
             ...options
         });
 
-        // Check if response is JSON before parsing
         const contentType = response.headers.get('content-type');
+        console.log('Response content-type:', contentType);
         
         let data;
         if (contentType && contentType.includes('application/json')) {
             data = await response.json();
+            console.log('Parsed JSON data:', data);
         } else {
-            // If not JSON, get the text and create a simple success response
             const text = await response.text();
+            console.error('Non-JSON response:', text.substring(0, 500));
             if (response.ok) {
                 return { 
                     success: true, 
@@ -971,14 +974,24 @@
                     } 
                 };
             } else {
-                throw new Error(text || `HTTP error! status: ${response.status}`);
+                throw new Error(`Server returned HTML instead of JSON. Status: ${response.status}`);
             }
         }
         
-        if (!response.ok) {
-            throw new Error(data.message || `HTTP error! status: ${response.status}`);
+        // Django returns {success: true, data: {...}} OR {ok: true, data: {...}}
+        // We need to check for BOTH formats
+        if (data.success === true || data.ok === true) {
+            console.log('Backend uses success_response format');
+            // Already in the right format, just return as-is
+            return { success: true, data: data.data };
         }
         
+        // Fallback: Direct format (no wrapper)
+        if (!response.ok) {
+            throw new Error(data.message || data.error || `HTTP error! status: ${response.status}`);
+        }
+        
+        console.log('Using direct format (no wrapper)');
         return { success: true, data };
     } catch (error) {
         console.error('API call failed:', error);

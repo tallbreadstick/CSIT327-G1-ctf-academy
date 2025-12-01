@@ -1,32 +1,35 @@
+import logging
+import traceback
+from collections import defaultdict
+from datetime import timedelta
+
+import google.generativeai as genai
+import json
+from django.conf import settings
+from django.contrib import messages
 from django.contrib.auth import authenticate, login, logout, update_session_auth_hash
+from django.contrib.auth.decorators import login_required, user_passes_test
 from django.contrib.auth.models import User
 from django.contrib.auth.password_validation import validate_password
+from django.core.cache import cache
 from django.core.exceptions import ValidationError
-from rest_framework.response import Response
-from rest_framework.views import APIView
-from rest_framework import status
+from django.core.paginator import Paginator
+from django.db import IntegrityError, transaction
+from django.db.models import Sum, Q, Case, When, IntegerField, Count
+from django.db.models.functions import TruncDate
+from django.http import Http404
 from django.shortcuts import render, redirect, get_object_or_404
 from django.urls import reverse
-from django.contrib import messages
-from django.contrib.auth.decorators import login_required, user_passes_test
-from .models import Challenge, Category, UserProfile, Favorite, ChallengeProgress
-from django.db.models import Sum, Q, Case, When, IntegerField
-from django.http import JsonResponse, HttpResponseBadRequest
-import traceback
-from django.views.decorators.csrf import csrf_exempt
 from django.utils import timezone
 from django.utils.http import url_has_allowed_host_and_scheme
 
-# --- ADDED IMPORTS FOR JWT AND API PROTECTION ---
+from .api import success_response, error_response
+from .decorators import friendly_ratelimit
+from .models import Challenge, Category, UserProfile, Favorite, ChallengeProgress
 from .serializers import MyTokenObtainPairSerializer
-from rest_framework_simplejwt.views import TokenObtainPairView
-from rest_framework.permissions import IsAuthenticated
 
-import google.generativeai as genai
-from django.conf import settings
-from django.http import JsonResponse
-import json
 
+# --- ADDED IMPORTS FOR JWT AND API PROTECTION ---
 
 from django.db.models import Count, Sum, Q
 from django.db.models.functions import TruncDate
@@ -47,16 +50,8 @@ def set_admin_view_mode(request, mode):
     request.session[ADMIN_VIEW_SESSION_KEY] = mode
 
 
-# --- NEW VIEW TO GENERATE TOKEN WITH CUSTOM PAYLOAD ---
 class MyTokenObtainPairView(TokenObtainPairView):
     serializer_class = MyTokenObtainPairSerializer
-
-
-
-
-# --- REMOVED THE OLD LoginView(APIView) CLASS ---
-# The class above replaces it and handles token generation automatically.
-
 
 
 class RegisterView(APIView):
@@ -75,9 +70,7 @@ class RegisterView(APIView):
         user = User.objects.create_user(username=username, email=email, password=password)
         return Response({"message": "User registered successfully!"}, status=status.HTTP_201_CREATED)
 
-# --- EXAMPLE OF A PROTECTED API ENDPOINT ---
-# Any request to this view must include a valid JWT in the Authorization header.
-# The library automatically rejects expired, tampered, or invalid tokens.
+
 class ProtectedDataView(APIView):
     permission_classes = [IsAuthenticated]
 
@@ -85,7 +78,152 @@ class ProtectedDataView(APIView):
         content = {'message': 'This is protected data, you are authenticated!'}
         return Response(content)
 
-# ========== HTML PAGE VIEWS (Unchanged but with protection examples) ==========
+
+CACHE_TTL = getattr(settings, "CACHE_TTL", 60)
+_CACHE_MISS = object()
+
+
+def _cache_get(key: str):
+    try:
+        return cache.get(key, _CACHE_MISS)
+    except Exception:
+        logger.exception("Cache get failure", extra={"cache_key": key})
+        return _CACHE_MISS
+
+
+def safe_cache_get_or_set(key: str, builder, ttl: int | None = None, *, allow_stale: bool = True):
+    """Fetch from cache with graceful fallback when the backend is unavailable."""
+
+    ttl = CACHE_TTL if ttl is None else ttl
+    if ttl is not None and ttl <= 0:
+        return builder()
+
+    cached_value = _cache_get(key)
+    if cached_value is not _CACHE_MISS:
+        return cached_value
+
+    stale_key = f"{key}:stale"
+
+    try:
+        value = builder()
+    except Exception:
+        if allow_stale:
+            stale_value = _cache_get(stale_key)
+            if stale_value is not _CACHE_MISS:
+                logger.warning("Serving stale cache for %s", key)
+                return stale_value
+        raise
+
+    try:
+        cache.set(key, value, ttl)
+        stale_ttl = ttl * 2 if ttl and ttl > 0 else ttl
+        if stale_ttl:
+            cache.set(stale_key, value, stale_ttl)
+    except Exception:
+        logger.exception("Cache set failure", extra={"cache_key": key})
+
+    return value
+
+
+def get_cached_categories():
+    return safe_cache_get_or_set(
+        "categories:ordered",
+        lambda: list(Category.objects.all().order_by("name")),
+    )
+
+
+def get_cached_challenge(slug: str):
+    def _builder():
+        challenge = get_object_or_404(Challenge.objects.select_related("category"), slug=slug)
+        sibling_key = f"challenge:detail-id:{challenge.id}"
+        try:
+            cache.set(sibling_key, challenge, CACHE_TTL)
+        except Exception:
+            logger.exception("Cache set failure", extra={"cache_key": sibling_key})
+        return challenge
+
+    return safe_cache_get_or_set(
+        f"challenge:detail:{slug}",
+        _builder,
+        allow_stale=False,
+    )
+
+
+def get_cached_challenge_by_id(challenge_id: int):
+    def _builder():
+        challenge = get_object_or_404(Challenge.objects.select_related("category"), id=challenge_id)
+        sibling_key = f"challenge:detail:{challenge.slug}"
+        try:
+            cache.set(sibling_key, challenge, CACHE_TTL)
+        except Exception:
+            logger.exception("Cache set failure", extra={"cache_key": sibling_key})
+        return challenge
+
+    return safe_cache_get_or_set(
+        f"challenge:detail-id:{challenge_id}",
+        _builder,
+        allow_stale=False,
+    )
+
+
+def get_leaderboard_snapshot():
+    cache_key = "leaderboard:snapshot"
+
+    def _build_snapshot():
+        progress_rows = (
+            ChallengeProgress.objects.filter(status=ChallengeProgress.Status.COMPLETED)
+            .select_related("challenge")
+        )
+        points_map = defaultdict(int)
+        completed_count_map = defaultdict(int)
+        completion_dates_map = defaultdict(set)
+        for row in progress_rows:
+            if row.challenge_id and row.challenge:
+                points_map[row.user_id] += row.challenge.points
+            completed_count_map[row.user_id] += 1
+            if row.completed_at:
+                local_date = timezone.localtime(row.completed_at).date()
+                completion_dates_map[row.user_id].add(local_date)
+
+        users_qs = User.objects.filter(is_active=True).order_by("username").select_related("profile")
+        today = timezone.localtime(timezone.now()).date()
+        yesterday = today - timedelta(days=1)
+
+        leaders = []
+        for user in users_qs:
+            image_uri = None
+            profile = getattr(user, "profile", None)
+            if profile:
+                try:
+                    img_b64 = profile.get_base64_image()
+                    if img_b64:
+                        image_uri = f"data:image/jpeg;base64,{img_b64}"
+                except Exception:
+                    image_uri = None
+
+            dates = completion_dates_map.get(user.id, set())
+            streak = 0
+            if dates:
+                cursor = today if today in dates else (yesterday if yesterday in dates else None)
+                while cursor and cursor in dates:
+                    streak += 1
+                    cursor -= timedelta(days=1)
+
+            leaders.append({
+                "id": user.id,
+                "username": user.username,
+                "points": points_map.get(user.id, 0),
+                "challenges": completed_count_map.get(user.id, 0),
+                "streak": streak,
+                "image_uri": image_uri,
+                "date_joined": user.date_joined,
+            })
+
+        leaders.sort(key=lambda r: (-r["points"], r["username"]))
+        return leaders
+
+    return safe_cache_get_or_set(cache_key, _build_snapshot)
+
 
 def home_page(request):
     if request.user.is_authenticated and request.user.is_superuser:
@@ -93,11 +231,12 @@ def home_page(request):
             return redirect("admin_dashboard_page")
     return render(request, "accounts/home.html")
 
+
 def about_page(request):
     return render(request, "accounts/about.html")
 
+
 def register_page(request):
-    # This view remains unchanged
     if request.method == "POST":
         username = request.POST.get("username")
         email = request.POST.get("email")
@@ -123,10 +262,11 @@ def register_page(request):
         return redirect("login_page")
     return render(request, "accounts/register.html")
 
+
 def login_page(request):
     # If user is already logged in, redirect them
     if request.user.is_authenticated:
-        if request.user.is_superuser:
+        if request.user.is_superuser and request.session.get(ADMIN_VIEW_SESSION_KEY, ADMIN_VIEW_MODE_ADMIN) != ADMIN_VIEW_MODE_USER:
             return redirect("admin_dashboard_page")
         else:
             return redirect("home")
@@ -157,6 +297,27 @@ def logout_page(request):
 
 def is_admin(user):
     return user.is_superuser
+
+
+@login_required
+@user_passes_test(is_admin)
+def switch_admin_view_mode(request):
+    mode = request.GET.get("mode", ADMIN_VIEW_MODE_USER)
+    if mode not in {ADMIN_VIEW_MODE_USER, ADMIN_VIEW_MODE_ADMIN}:
+        mode = ADMIN_VIEW_MODE_ADMIN
+
+    request.session[ADMIN_VIEW_SESSION_KEY] = mode
+
+    default_next = "challenges_page" if mode == ADMIN_VIEW_MODE_USER else "admin_dashboard_page"
+    next_url = request.GET.get("next")
+    if not next_url or not url_has_allowed_host_and_scheme(next_url, allowed_hosts={request.get_host()}):
+        next_url = reverse(default_next)
+
+    messages.info(
+        request,
+        "User view enabled" if mode == ADMIN_VIEW_MODE_USER else "Returned to admin view",
+    )
+    return redirect(next_url)
 
 
 
@@ -261,11 +422,12 @@ def profile_page(request):
 
 
 @login_required
+@friendly_ratelimit(rate='30/m', method='GET')
 def challenges_page(request):
     user = request.user
 
     # --- Basic collections ---
-    categories = Category.objects.all().order_by("name")
+    categories = get_cached_categories()
     qs = Challenge.objects.filter(is_active=True).select_related("category")
 
     # --- Filters from query string ---
@@ -400,7 +562,7 @@ def challenges_page(request):
         "completed": completed_count,
         "in_progress": in_progress_count,
         "points_earned": points_earned,
-        "categories_count": categories.count(),
+        "categories_count": len(categories),
     }
 
     context = {
@@ -420,84 +582,15 @@ def challenges_page(request):
 
 
 @login_required
+@friendly_ratelimit(rate='20/m', method='GET')
 def leaderboards_page(request):
-    """
-    Dynamic leaderboards backed by the existing database.
-    There is no scoring system yet, so everyone is shown with 0 points.
-    Ordering falls back to most recent users first so the page looks alive.
-    """
-    # Pull active users from DB (Supabase Postgres via Django settings)
-    users_qs = User.objects.filter(is_active=True).order_by("username")
-
-    # Preload progress for all users to compute points from completed challenges
-    from collections import defaultdict
-    from datetime import timedelta
-    
-    progress_rows = ChallengeProgress.objects.filter(status=ChallengeProgress.Status.COMPLETED)
-    points_map = defaultdict(int)
-    completed_count_map = defaultdict(int)
-    completion_dates_map = defaultdict(set)
-
-    for p in progress_rows.select_related("challenge"):
-        points_map[p.user_id] += p.challenge.points
-        completed_count_map[p.user_id] += 1
-        if p.completed_at:
-            local_date = timezone.localtime(p.completed_at).date()
-            completion_dates_map[p.user_id].add(local_date)
-
-    # Calculate streaks
-    streak_map = {}
-    today = timezone.localtime(timezone.now()).date()
-    yesterday = today - timedelta(days=1)
-
-    for user_id, dates in completion_dates_map.items():
-        streak = 0
-        check_date = today
-        
-        if check_date not in dates:
-            if yesterday in dates:
-                check_date = yesterday
-            else:
-                streak_map[user_id] = 0
-                continue
-
-        while check_date in dates:
-            streak += 1
-            check_date -= timedelta(days=1)
-        
-        streak_map[user_id] = streak
-
-    leaders = []
-    for u in users_qs:
-        image_uri = None
-        try:
-            if hasattr(u, "profile"):
-                img_b64 = u.profile.get_base64_image()
-                if img_b64:
-                    image_uri = f"data:image/jpeg;base64,{img_b64}"
-        except Exception:
-            image_uri = None
-
-        leaders.append({
-            "id": u.id,
-            "username": u.username,
-            "points": points_map.get(u.id, 0),
-            "challenges": completed_count_map.get(u.id, 0),
-            "streak": streak_map.get(u.id, 0),
-            "image_uri": image_uri,
-            "date_joined": u.date_joined,
-        })
-
-    # Order leaders by points desc then username
-    leaders.sort(key=lambda r: (-r["points"], r["username"]))
-    top = leaders[:3]
-    rest = leaders[3:]
+    snapshot = list(get_leaderboard_snapshot())
+    top = snapshot[:3]
+    rest = snapshot[3:]
     start_rank = len(top) + 1
 
-    # Current user's rank (1-based) if present in list
     current_user_rank = None
-    current_user_stats = None
-    for idx, row in enumerate(leaders, start=1):
+    for idx, row in enumerate(snapshot, start=1):
         if row["id"] == request.user.id:
             current_user_rank = idx
             current_user_stats = row
@@ -506,7 +599,7 @@ def leaderboards_page(request):
     context = {
         "top": top,
         "leaders": rest,
-        "all_leaders": leaders,  # optional full list if template needs it
+        "all_leaders": snapshot,
         "current_user_rank": current_user_rank,
         "current_user_stats": current_user_stats,
         "start_rank": start_rank,
@@ -515,10 +608,11 @@ def leaderboards_page(request):
     return render(request, "accounts/leaderboards.html", context)
 
 @login_required
+@friendly_ratelimit(rate='60/m', method='GET')
 def challenge_detail(request, slug):
     # Fetch the challenge
-    challenge = get_object_or_404(Challenge, slug=slug)
-    categories = Category.objects.all()
+    challenge = get_cached_challenge(slug)
+    categories = get_cached_categories()
 
     # Build initial content for the text editor
     initial_content = f"""Challenge: {challenge.title}
@@ -606,18 +700,29 @@ Type commands in the Terminal window. Use 'help' for generic terminal help.
 
 
 @login_required
+@friendly_ratelimit(rate='60/m', method='POST')
 def toggle_favorite(request, challenge_id: int):
     if request.method != "POST":
-        return HttpResponseBadRequest("POST required")
-    challenge = get_object_or_404(Challenge, id=challenge_id)
+        return error_response("POST required", code="method_not_allowed", status_code=405)
+    challenge = get_cached_challenge_by_id(challenge_id)
     try:
-        fav, created = Favorite.objects.get_or_create(user=request.user, challenge=challenge)
-        if created:
-            return JsonResponse({"favorited": True})
-        fav.delete()
-        return JsonResponse({"favorited": False})
+        with transaction.atomic():
+            fav, created = Favorite.objects.get_or_create(user=request.user, challenge=challenge)
+    except IntegrityError:
+        logger.warning(
+            "Favorite race detected", extra={"challenge_id": challenge_id, "user_id": request.user.id}
+        )
+        fav = Favorite.objects.filter(user=request.user, challenge=challenge).first()
+        created = False
     except Exception:
-        return JsonResponse({"error": "Unable to save favorite. Please try again."}, status=500)
+        logger.exception("Failed to toggle favorite for challenge %s", challenge_id)
+        return error_response("Unable to update favorite right now.", code="favorite_error", status_code=500)
+
+    if created:
+        return success_response({"favorited": True})
+    if fav:
+        fav.delete()
+    return success_response({"favorited": False})
 
 
 @login_required
@@ -633,19 +738,19 @@ def favorites_page(request):
 
 
 @login_required
+@friendly_ratelimit(rate='60/m', method='POST')
 @csrf_exempt  # Prototype: remove when front-end CSRF stable
 def save_progress(request, challenge_id: int):
     """Persist user's last_state for a challenge and mark save as successful.
     Expected JSON body: { "last_state": <any json-serializable> }
     """
     if request.method != "POST":
-        return HttpResponseBadRequest("POST required")
-    challenge = get_object_or_404(Challenge, id=challenge_id)
-    import json
+        return error_response("POST required", code="method_not_allowed", status_code=405)
+    challenge = get_cached_challenge_by_id(challenge_id)
     try:
         payload = json.loads(request.body.decode("utf-8") or "{}")
-    except Exception:
-        payload = {}
+    except json.JSONDecodeError:
+        return error_response("Invalid JSON payload.", code="invalid_json", status_code=400)
     last_state = payload.get("last_state")
     try:
         prog, _ = ChallengeProgress.objects.get_or_create(
@@ -658,14 +763,14 @@ def save_progress(request, challenge_id: int):
         if prog.status == ChallengeProgress.Status.ATTEMPTED:
             prog.status = ChallengeProgress.Status.IN_PROGRESS
         prog.save()  # full save (avoid update_fields mismatch with DB schema)
-        return JsonResponse({"ok": True})
-    except Exception as e:
-        tb = traceback.format_exc()
-        print(tb)
-        return JsonResponse({"ok": False, "message": f"Save failed: {type(e).__name__}: {e}", "debug": tb}, status=500)
+        return success_response({"status": prog.status, "saved": True})
+    except Exception:
+        logger.exception("Failed to save challenge progress", extra={"challenge_id": challenge_id})
+        return error_response("Unable to save progress.", code="save_failed", status_code=500)
 
 
 @login_required
+@friendly_ratelimit(rate='60/m', method='POST')
 @csrf_exempt  # Prototype: remove when front-end CSRF stable
 def update_challenge_status(request, challenge_id: int):
     """Update a user's ChallengeProgress status via simple POST.
@@ -673,19 +778,20 @@ def update_challenge_status(request, challenge_id: int):
     Returns JSON: { ok, status, points_awarded?, message }
     """
     if request.method != "POST":
-        return HttpResponseBadRequest("POST required")
-    challenge = get_object_or_404(Challenge, id=challenge_id)
+        return error_response("POST required", code="method_not_allowed", status_code=405)
+    challenge = get_cached_challenge_by_id(challenge_id)
     # Extract status from POST or JSON
     status_val = request.POST.get("status")
     if not status_val:
-        import json
         try:
             payload = json.loads(request.body.decode("utf-8") or "{}")
             status_val = payload.get("status")
+        except json.JSONDecodeError:
+            return error_response("Invalid JSON payload.", code="invalid_json", status_code=400)
         except Exception:
             status_val = None
     if status_val not in ["in_progress", "completed"]:
-        return JsonResponse({"ok": False, "message": "Invalid status."}, status=400)
+        return error_response("Invalid status.", code="invalid_status", status_code=400)
     try:
         prog, _ = ChallengeProgress.objects.get_or_create(
             user=request.user, challenge=challenge,
@@ -693,23 +799,26 @@ def update_challenge_status(request, challenge_id: int):
         )
         if status_val == "in_progress":
             if prog.status == ChallengeProgress.Status.COMPLETED:
-                return JsonResponse({"ok": True, "status": prog.status, "message": "Already completed. Cannot revert to In Progress."})
+                return success_response({"status": prog.status}, message="Already completed. Cannot revert to In Progress.")
             if prog.status != ChallengeProgress.Status.IN_PROGRESS:
                 prog.status = ChallengeProgress.Status.IN_PROGRESS
                 prog.save()
-            return JsonResponse({"ok": True, "status": prog.status, "message": "Marked In Progress."})
+            return success_response({"status": prog.status}, message="Marked In Progress.")
         # completed path
         if prog.status == ChallengeProgress.Status.COMPLETED:
-            return JsonResponse({"ok": True, "status": prog.status, "message": "Already completed. Points previously awarded."})
+            return success_response({"status": prog.status}, message="Already completed. Points previously awarded.")
         prog.mark_completed()
-        return JsonResponse({"ok": True, "status": prog.status, "points_awarded": challenge.points, "message": f"Congratulations! Challenge completed. +{challenge.points} points."})
-    except Exception as e:
-        tb = traceback.format_exc()
-        print(tb)
-        return JsonResponse({"ok": False, "message": f"Server error ({type(e).__name__}): {e}", "debug": tb}, status=500)
+        return success_response(
+            {"status": prog.status, "points_awarded": challenge.points},
+            message=f"Congratulations! Challenge completed. +{challenge.points} points."
+        )
+    except Exception:
+        logger.exception("Failed to update challenge status", extra={"challenge_id": challenge_id})
+        return error_response("Unable to update status.", code="status_error", status_code=500)
 
 
 @login_required
+@friendly_ratelimit(rate='90/m', method='POST')
 @csrf_exempt
 def api_mark_inprogress(request):
     """Endpoint /inprogress
@@ -717,38 +826,44 @@ def api_mark_inprogress(request):
     Returns current status; does not award points.
     """
     if request.method != "POST":
-        return HttpResponseBadRequest("POST required")
+        return error_response("POST required", code="method_not_allowed", status_code=405)
     slug = request.POST.get("slug")
     ch_id = request.POST.get("id")
     if not slug and not ch_id:
-        # Try JSON body
-        import json
         try:
             payload = json.loads(request.body.decode("utf-8") or "{}")
+        except json.JSONDecodeError:
+            return error_response("Invalid JSON payload.", code="invalid_json", status_code=400)
         except Exception:
             payload = {}
         slug = payload.get("slug")
         ch_id = payload.get("id")
     try:
         if slug:
-            challenge = get_object_or_404(Challenge, slug=slug)
+            challenge = get_cached_challenge(slug)
         else:
-            challenge = get_object_or_404(Challenge, id=int(ch_id))
+            challenge = get_cached_challenge_by_id(int(ch_id))
+    except (Http404, ValueError, TypeError):
+        return error_response("Challenge not found.", code="challenge_missing", status_code=404)
+
+    try:
+        prog, _ = ChallengeProgress.objects.get_or_create(
+            user=request.user, challenge=challenge,
+            defaults={"status": ChallengeProgress.Status.ATTEMPTED}
+        )
+        if prog.status == ChallengeProgress.Status.COMPLETED:
+            return success_response({"status": prog.status}, message="Already completed.")
+        if prog.status != ChallengeProgress.Status.IN_PROGRESS:
+            prog.status = ChallengeProgress.Status.IN_PROGRESS
+            prog.save(update_fields=["status", "updated_at"])
+        return success_response({"status": prog.status}, message="Marked In Progress.")
     except Exception:
-        return JsonResponse({"ok": False, "message": "Challenge not found."}, status=404)
-    prog, _ = ChallengeProgress.objects.get_or_create(
-        user=request.user, challenge=challenge,
-        defaults={"status": ChallengeProgress.Status.ATTEMPTED}
-    )
-    if prog.status == ChallengeProgress.Status.COMPLETED:
-        return JsonResponse({"ok": True, "status": prog.status, "message": "Already completed."})
-    if prog.status != ChallengeProgress.Status.IN_PROGRESS:
-        prog.status = ChallengeProgress.Status.IN_PROGRESS
-        prog.save(update_fields=["status", "updated_at"])
-    return JsonResponse({"ok": True, "status": prog.status, "message": "Marked In Progress."})
+        logger.exception("Failed to mark challenge in progress")
+        return error_response("Unable to update challenge.", code="status_error", status_code=500)
 
 
 @login_required
+@friendly_ratelimit(rate='90/m', method='POST')
 @csrf_exempt
 def api_mark_complete(request):
     """Endpoint /complete
@@ -756,33 +871,41 @@ def api_mark_complete(request):
     Idempotent: points only returned first time.
     """
     if request.method != "POST":
-        return HttpResponseBadRequest("POST required")
+        return error_response("POST required", code="method_not_allowed", status_code=405)
     slug = request.POST.get("slug")
     ch_id = request.POST.get("id")
     if not slug and not ch_id:
-        import json
         try:
             payload = json.loads(request.body.decode("utf-8") or "{}")
+        except json.JSONDecodeError:
+            return error_response("Invalid JSON payload.", code="invalid_json", status_code=400)
         except Exception:
             payload = {}
         slug = payload.get("slug")
         ch_id = payload.get("id")
     try:
         if slug:
-            challenge = get_object_or_404(Challenge, slug=slug)
+            challenge = get_cached_challenge(slug)
         else:
-            challenge = get_object_or_404(Challenge, id=int(ch_id))
+            challenge = get_cached_challenge_by_id(int(ch_id))
+    except (Http404, ValueError, TypeError):
+        return error_response("Challenge not found.", code="challenge_missing", status_code=404)
+
+    try:
+        prog, _ = ChallengeProgress.objects.get_or_create(
+            user=request.user, challenge=challenge,
+            defaults={"status": ChallengeProgress.Status.ATTEMPTED}
+        )
+        if prog.status == ChallengeProgress.Status.COMPLETED:
+            return success_response({"status": prog.status, "points_awarded": 0}, message="Already completed.")
+        prog.mark_completed()
+        return success_response(
+            {"status": prog.status, "points_awarded": challenge.points},
+            message=f"Completed. +{challenge.points} points."
+        )
     except Exception:
-        return JsonResponse({"ok": False, "message": "Challenge not found."}, status=404)
-    prog, _ = ChallengeProgress.objects.get_or_create(
-        user=request.user, challenge=challenge,
-        defaults={"status": ChallengeProgress.Status.ATTEMPTED}
-    )
-    if prog.status == ChallengeProgress.Status.COMPLETED:
-        # Already completed— do not re-award points
-        return JsonResponse({"ok": True, "status": prog.status, "points_awarded": 0, "message": "Already completed."})
-    prog.mark_completed()
-    return JsonResponse({"ok": True, "status": prog.status, "points_awarded": challenge.points, "message": f"Completed. +{challenge.points} points."})
+        logger.exception("Failed to mark challenge complete")
+        return error_response("Unable to complete challenge.", code="status_error", status_code=500)
 
 
 @login_required
@@ -841,27 +964,28 @@ def chatbot_page(request):
 def chatbot_api(request):
     """Handle chatbot API requests"""
     if request.method != 'POST':
-        return JsonResponse({'error': 'POST method required'}, status=405)
+        return error_response('POST method required', code='method_not_allowed', status_code=405)
     
     try:
-        data = json.loads(request.body)
+        # Parse the JSON data
+        data = json.loads(request.body.decode('utf-8'))
         user_message = data.get('message', '').strip()
         
         if not user_message:
-            return JsonResponse({'error': 'Message is required'}, status=400)
+            return error_response('Message is required', code='missing_message', status_code=400)
         
         # Check if API key is configured
         if not settings.GEMINI_API_KEY:
-            return JsonResponse({
-                'error': 'Gemini API key not configured. Please add GEMINI_API_KEY to your .env file.',
-                'success': False
-            }, status=500)
+            return error_response(
+                'Gemini API key not configured. Please add GEMINI_API_KEY to your .env file.',
+                code='missing_api_key',
+                status_code=500
+            )
         
         # Configure Gemini
         genai.configure(api_key=settings.GEMINI_API_KEY)
         
-        # Use generate_content directly without specifying model
-        # This uses the default available model
+        # Generation config
         generation_config = {
             "temperature": 0.7,
             "top_p": 1,
@@ -873,22 +997,22 @@ def chatbot_api(request):
         context = """You are a helpful AI assistant for CTF Academy, a LeetCode-style learning platform for offensive cybersecurity. 
 
 CTF Academy offers:
-- Logical cybersecurity challenges focusing on reasoning and problem-solving
-- Sandboxed environments for safe exploration
-- Leaderboards and streak tracking for competition
-- Various challenge categories (Web, Cryptography, Reverse Engineering, etc.)
+- Logical challenges focused on reasoning and problem-solving
+- Sandboxed environments for safe practice
+- Leaderboards and streak tracking for motivation
+- Various cybersecurity categories (Web, Crypto, Forensics, etc.)
 
 Answer questions about:
 - Cybersecurity concepts and techniques
-- How to approach CTF challenges
+- CTF challenge strategies and hints
 - Platform features and navigation
-- General offensive security topics
+- Offensive security topics
 
 Be helpful, encouraging, and educational. Keep responses concise and actionable."""
         
         full_prompt = f"{context}\n\nUser: {user_message}\n\nAssistant:"
         
-        # Try the working models for this API key (Gemini 2.0/2.5)
+        # Try multiple models for compatibility
         model_attempts = [
             'gemini-2.5-flash',
             'gemini-2.0-flash',
@@ -906,40 +1030,35 @@ Be helpful, encouraging, and educational. Keep responses concise and actionable.
                     generation_config=generation_config
                 )
                 response_text = response.text
-                print(f"✓ SUCCESS with model: {model_name}")
+                logger.debug("Gemini model %s succeeded", model_name)
                 break
             except Exception as e:
                 error_msg = str(e)[:150]
-                print(f"✗ Model '{model_name}' failed: {error_msg}")
+                logger.warning("Gemini model %s failed: %s", model_name, error_msg)
                 continue
         
         if not response_text:
-            return JsonResponse({
-                'error': 'Could not generate response with any available model. Please check your API key permissions.',
-                'success': False
-            }, status=500)
+            fallback_text = "Our AI helper is temporarily unavailable. Review challenge writeups, revisit fundamentals, and keep practicing defensive enumeration until service resumes."
+            return success_response(
+                {'response': fallback_text}, 
+                meta={'fallback': True}, 
+                message='Serving cached guidance while the AI model recovers.'
+            )
         
-        return JsonResponse({
-            'response': response_text,
-            'success': True
-        })
+        return success_response({'response': response_text})
         
     except json.JSONDecodeError as e:
-        print(f"JSON decode error: {e}")
-        return JsonResponse({
-            'error': 'Invalid JSON format',
-            'success': False
-        }, status=400)
+        logger.warning("Chatbot JSON decode error: %s", e)
+        return error_response('Invalid JSON format', code='invalid_json', status_code=400)
     
     except Exception as e:
-        print(f"Chatbot API error: {type(e).__name__}: {e}")
-        import traceback
-        print(f"Full traceback:\n{traceback.format_exc()}")
-        return JsonResponse({
-            'error': f'An error occurred: {str(e)}',
-            'success': False
-        }, status=500)
-        
+        logger.exception("Chatbot API error")
+        fallback_text = "Our AI helper hit a snag. In the meantime, break challenges into recon -> scanning -> exploitation steps and keep notes for each attempt."
+        return success_response(
+            {'response': fallback_text}, 
+            meta={'fallback': True}, 
+            message='Using safe fallback guidance while the AI restarts.'
+        )
 
 # ============================================================================
 # 1. ENHANCED ADMIN DASHBOARD
@@ -951,59 +1070,58 @@ def admin_dashboard_page(request):
     """Enhanced admin dashboard with comprehensive analytics"""
     set_admin_view_mode(request, ADMIN_VIEW_MODE_ADMIN)
     
+    request.session[ADMIN_VIEW_SESSION_KEY] = ADMIN_VIEW_MODE_ADMIN
+
     # === USER STATISTICS ===
     total_users = User.objects.filter(is_active=True).count()
     new_users_this_month = User.objects.filter(
         date_joined__gte=timezone.now() - timedelta(days=30)
     ).count()
     
-    # Top performers (most points)
-    top_users = []
-    for user in User.objects.filter(is_active=True)[:10]:
-        completed = ChallengeProgress.objects.filter(
-            user=user, 
-            status=ChallengeProgress.Status.COMPLETED
+    top_users_qs = (
+        User.objects.filter(is_active=True)
+        .annotate(
+            completed_points=Sum(
+                'challenge_progress__challenge__points',
+                filter=Q(challenge_progress__status=ChallengeProgress.Status.COMPLETED),
+            ),
+            completed_count=Count(
+                'challenge_progress',
+                filter=Q(challenge_progress__status=ChallengeProgress.Status.COMPLETED),
+            ),
         )
-        total_points = completed.aggregate(
-            points=Sum('challenge__points')
-        )['points'] or 0
-        
-        top_users.append({
+        .order_by('-completed_points', 'username')[:5]
+    )
+
+    top_users = [
+        {
             'username': user.username,
             'email': user.email,
-            'points': total_points,
-            'completed_count': completed.count(),
-            'date_joined': user.date_joined
-        })
-    
-    top_users.sort(key=lambda x: x['points'], reverse=True)
-    top_users = top_users[:5]
+            'points': user.completed_points or 0,
+            'completed_count': user.completed_count or 0,
+            'date_joined': user.date_joined,
+        }
+        for user in top_users_qs
+    ]
     
     # === CHALLENGE STATISTICS ===
     total_challenges = Challenge.objects.filter(is_active=True).count()
     
     # Challenge completion rates
+    challenge_stats_qs = Challenge.objects.filter(is_active=True).annotate(
+        completed=Count('progress', filter=Q(progress__status=ChallengeProgress.Status.COMPLETED)),
+        in_progress=Count('progress', filter=Q(progress__status=ChallengeProgress.Status.IN_PROGRESS)),
+        attempted=Count('progress', filter=Q(progress__status=ChallengeProgress.Status.ATTEMPTED)),
+    ).select_related('category')
+
     challenges_with_stats = []
-    for challenge in Challenge.objects.filter(is_active=True):
-        progress_counts = ChallengeProgress.objects.filter(
-            challenge=challenge
-        ).values('status').annotate(count=Count('id'))
-        
-        completed = 0
-        in_progress = 0
-        attempted = 0
-        
-        for p in progress_counts:
-            if p['status'] == ChallengeProgress.Status.COMPLETED:
-                completed = p['count']
-            elif p['status'] == ChallengeProgress.Status.IN_PROGRESS:
-                in_progress = p['count']
-            elif p['status'] == ChallengeProgress.Status.ATTEMPTED:
-                attempted = p['count']
-        
+    for challenge in challenge_stats_qs:
+        completed = challenge.completed or 0
+        in_progress = challenge.in_progress or 0
+        attempted = challenge.attempted or 0
         total_attempts = completed + in_progress + attempted
-        completion_rate = (completed / total_attempts * 100) if total_attempts > 0 else 0
-        
+        completion_rate = (completed / total_attempts * 100) if total_attempts else 0
+
         challenges_with_stats.append({
             'id': challenge.id,
             'title': challenge.title,
@@ -1014,7 +1132,7 @@ def admin_dashboard_page(request):
             'completed': completed,
             'in_progress': in_progress,
             'attempted': attempted,
-            'completion_rate': round(completion_rate, 1)
+            'completion_rate': round(completion_rate, 1),
         })
     
     # Sort by completion rate
@@ -1075,6 +1193,7 @@ def admin_dashboard_page(request):
         'completion_trend': completion_trend,
         'difficulty_stats': list(difficulty_stats),
         'recent_activities': recent_activities,
+        'admin_view_mode': request.session.get(ADMIN_VIEW_SESSION_KEY, ADMIN_VIEW_MODE_ADMIN),
     }
     
     return render(request, "accounts/admin_dashboard.html", context)
@@ -1189,7 +1308,17 @@ def admin_users_list(request):
     search_query = request.GET.get('q', '').strip()
     page = int(request.GET.get('page', 1))
     
-    users_qs = User.objects.filter(is_active=True)
+    users_qs = User.objects.filter(is_active=True).annotate(
+        completed_challenges=Count(
+            'challenge_progress',
+            filter=Q(challenge_progress__status=ChallengeProgress.Status.COMPLETED)
+        ),
+        favorites_count=Count('favorites', distinct=True),
+        total_points=Sum(
+            'challenge_progress__challenge__points',
+            filter=Q(challenge_progress__status=ChallengeProgress.Status.COMPLETED)
+        ),
+    )
     
     if search_query:
         users_qs = users_qs.filter(
@@ -1204,18 +1333,6 @@ def admin_users_list(request):
     
     users_data = []
     for user in page_obj:
-        completed = ChallengeProgress.objects.filter(
-            user=user,
-            status=ChallengeProgress.Status.COMPLETED
-        ).count()
-        
-        favorites = Favorite.objects.filter(user=user).count()
-        
-        total_points = ChallengeProgress.objects.filter(
-            user=user,
-            status=ChallengeProgress.Status.COMPLETED
-        ).aggregate(points=Sum('challenge__points'))['points'] or 0
-        
         users_data.append({
             'id': user.id,
             'username': user.username,
@@ -1224,12 +1341,12 @@ def admin_users_list(request):
             'last_name': user.last_name,
             'date_joined': user.date_joined.isoformat(),
             'is_active': user.is_active,
-            'completed_challenges': completed,
-            'favorites': favorites,
-            'total_points': total_points
+            'completed_challenges': user.completed_challenges or 0,
+            'favorites': user.favorites_count or 0,
+            'total_points': user.total_points or 0,
         })
     
-    return JsonResponse({
+    return success_response({
         'users': users_data,
         'page': page,
         'total_pages': paginator.num_pages,
@@ -1243,7 +1360,7 @@ def admin_users_list(request):
 def admin_user_update(request, user_id):
     """Update user details"""
     if request.method != 'POST':
-        return HttpResponseBadRequest("POST required")
+        return error_response("POST required", code="method_not_allowed", status_code=405)
     
     target_user = get_object_or_404(User, id=user_id)
     
@@ -1264,16 +1381,15 @@ def admin_user_update(request, user_id):
         
         target_user.save()
         
-        return JsonResponse({
-            'ok': True,
-            'message': f'User {target_user.username} updated successfully'
-        })
-    
-    except Exception as e:
-        return JsonResponse({
-            'ok': False,
-            'message': f'Error: {str(e)}'
-        }, status=500)
+        return success_response(
+            {'user_id': target_user.id},
+            message=f'User {target_user.username} updated successfully'
+        )
+    except json.JSONDecodeError:
+        return error_response('Invalid JSON payload.', code='invalid_json', status_code=400)
+    except Exception:
+        logger.exception("Failed to update admin user", extra={"user_id": user_id})
+        return error_response('Unable to update user.', code='admin_update_failed', status_code=500)
 
 
 @login_required
@@ -1282,22 +1398,20 @@ def admin_user_update(request, user_id):
 def admin_user_delete(request, user_id):
     """Deactivate a user"""
     if request.method != 'POST':
-        return HttpResponseBadRequest("POST required")
+        return error_response("POST required", code="method_not_allowed", status_code=405)
     
     target_user = get_object_or_404(User, id=user_id)
     
     if target_user.is_superuser:
-        return JsonResponse({
-            'ok': False,
-            'message': 'Cannot deactivate admin users'
-        }, status=400)
+        return error_response('Cannot deactivate admin users', code='forbidden', status_code=400)
     
-    target_user.delete() 
+    try:
+        target_user.delete()
+    except Exception:
+        logger.exception("Failed to delete admin user", extra={"user_id": user_id})
+        return error_response('Unable to delete user.', code='admin_delete_failed', status_code=500)
     
-    return JsonResponse({
-        'ok': True,
-        'message': f'User {target_user.username} deleted.'
-    })
+    return success_response({'user_id': target_user.id}, message=f'User {target_user.username} deleted.')
 
 
 # ============================================================================
@@ -1337,7 +1451,7 @@ def admin_challenge_analytics(request, challenge_id):
     # Favorite count
     favorite_count = Favorite.objects.filter(challenge=challenge).count()
     
-    return JsonResponse({
+    return success_response({
         'challenge': {
             'id': challenge.id,
             'title': challenge.title,
@@ -1409,7 +1523,7 @@ def admin_user_progress(request, user_id):
         for fav in favorites
     ]
     
-    return JsonResponse({
+    return success_response({
         'user': {
             'id': user.id,
             'username': user.username,
@@ -1432,7 +1546,7 @@ def admin_user_progress(request, user_id):
 @user_passes_test(is_admin)
 def admin_category_stats(request):
     """Get statistics grouped by category"""
-    categories = Category.objects.all()
+    categories = get_cached_categories()
     
     category_stats = []
     
@@ -1468,7 +1582,7 @@ def admin_category_stats(request):
             } if popular_challenge else None
         })
     
-    return JsonResponse({
+    return success_response({
         'categories': category_stats,
         'total_categories': len(category_stats)
     })
@@ -1488,15 +1602,15 @@ def admin_export_data(request):
         users = User.objects.filter(is_active=True).values(
             'id', 'username', 'email', 'date_joined', 'is_active'
         )
-        return JsonResponse({'users': list(users)})
+        return success_response({'users': list(users)})
     
-    elif export_type == 'challenges':
+    if export_type == 'challenges':
         challenges = Challenge.objects.filter(is_active=True).values(
             'id', 'title', 'slug', 'difficulty', 'points', 'category__name'
         )
-        return JsonResponse({'challenges': list(challenges)})
+        return success_response({'challenges': list(challenges)})
     
-    elif export_type == 'progress':
+    if export_type == 'progress':
         progress = ChallengeProgress.objects.select_related(
             'user', 'challenge'
         ).values(
@@ -1507,9 +1621,9 @@ def admin_export_data(request):
             'updated_at',
             'completed_at'
         )
-        return JsonResponse({'progress': list(progress)})
+        return success_response({'progress': list(progress)})
     
-    return JsonResponse({'error': 'Invalid export type'}, status=400)
+    return error_response('Invalid export type', code='invalid_request', status_code=400)
 
 @login_required
 @user_passes_test(is_admin)
@@ -1559,4 +1673,4 @@ def admin_user_detail(request, user_id):
         ]
     }
     
-    return JsonResponse({'user': user_data})
+    return success_response({'user': user_data})
