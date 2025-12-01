@@ -13,11 +13,13 @@
 
             <!-- CENTER: Page Links -->
             <div class="hidden md:flex items-center space-x-8">
-                {% if user.is_superuser %}
-                <a href="{% url 'admin_dashboard_page' %}" class="text-pink-400 font-semibold hover:text-pink-300">Home</a>
-                {% else %}
-                <a href="{% url 'home' %}" class="text-gray-300 hover:text-pink-300">Home</a>
-                {% endif %}
+                {% with request.session.admin_view_mode as admin_mode %}
+                    {% if user.is_superuser and admin_mode != 'user' %}
+                    <a href="{% url 'admin_dashboard_page' %}" class="text-pink-400 font-semibold hover:text-pink-300">Home</a>
+                    {% else %}
+                    <a href="{% url 'home' %}" class="text-gray-300 hover:text-pink-300">Home</a>
+                    {% endif %}
+                {% endwith %}
                 <a href="/about" class="text-gray-300 hover:text-pink-400">About</a>
                 <a href="/challenges" class="text-gray-300 hover:text-pink-400">Challenges</a>
                 <a href="/leaderboards" class="text-gray-300 hover:text-pink-400">Leaderboards</a>
