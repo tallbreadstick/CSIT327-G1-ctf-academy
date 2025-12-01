@@ -21,6 +21,7 @@ from django.http import Http404
 from django.shortcuts import render, redirect, get_object_or_404
 from django.urls import reverse
 from django.utils import timezone
+from django.utils.http import url_has_allowed_host_and_scheme
 from django.views.decorators.csrf import csrf_exempt
 from rest_framework import status
 from rest_framework.permissions import IsAuthenticated
@@ -38,6 +39,9 @@ from .serializers import MyTokenObtainPairSerializer
 
 
 logger = logging.getLogger(__name__)
+ADMIN_VIEW_SESSION_KEY = "admin_view_mode"
+ADMIN_VIEW_MODE_ADMIN = "admin"
+ADMIN_VIEW_MODE_USER = "user"
 
 
 class MyTokenObtainPairView(TokenObtainPairView):
@@ -217,7 +221,8 @@ def get_leaderboard_snapshot():
 
 def home_page(request):
     if request.user.is_authenticated and request.user.is_superuser:
-        return redirect("admin_dashboard_page")
+        if request.session.get(ADMIN_VIEW_SESSION_KEY, ADMIN_VIEW_MODE_ADMIN) != ADMIN_VIEW_MODE_USER:
+            return redirect("admin_dashboard_page")
     return render(request, "accounts/home.html")
 
 
@@ -255,7 +260,7 @@ def register_page(request):
 def login_page(request):
     # If user is already logged in, redirect them
     if request.user.is_authenticated:
-        if request.user.is_superuser:
+        if request.user.is_superuser and request.session.get(ADMIN_VIEW_SESSION_KEY, ADMIN_VIEW_MODE_ADMIN) != ADMIN_VIEW_MODE_USER:
             return redirect("admin_dashboard_page")
         else:
             return redirect("home")
@@ -267,7 +272,7 @@ def login_page(request):
         if user is not None:
             login(request, user)
             # Redirect without message
-            if user.is_superuser:
+            if user.is_superuser and request.session.get(ADMIN_VIEW_SESSION_KEY, ADMIN_VIEW_MODE_ADMIN) != ADMIN_VIEW_MODE_USER:
                 return redirect("admin_dashboard_page")
             else:
                 return redirect("home")
@@ -284,6 +289,27 @@ def logout_page(request):
 
 def is_admin(user):
     return user.is_superuser
+
+
+@login_required
+@user_passes_test(is_admin)
+def switch_admin_view_mode(request):
+    mode = request.GET.get("mode", ADMIN_VIEW_MODE_USER)
+    if mode not in {ADMIN_VIEW_MODE_USER, ADMIN_VIEW_MODE_ADMIN}:
+        mode = ADMIN_VIEW_MODE_ADMIN
+
+    request.session[ADMIN_VIEW_SESSION_KEY] = mode
+
+    default_next = "challenges_page" if mode == ADMIN_VIEW_MODE_USER else "admin_dashboard_page"
+    next_url = request.GET.get("next")
+    if not next_url or not url_has_allowed_host_and_scheme(next_url, allowed_hosts={request.get_host()}):
+        next_url = reverse(default_next)
+
+    messages.info(
+        request,
+        "User view enabled" if mode == ADMIN_VIEW_MODE_USER else "Returned to admin view",
+    )
+    return redirect(next_url)
 
 
 
@@ -1035,6 +1061,8 @@ Be helpful, encouraging, and educational. Keep responses concise and actionable.
 def admin_dashboard_page(request):
     """Enhanced admin dashboard with comprehensive analytics"""
     
+    request.session[ADMIN_VIEW_SESSION_KEY] = ADMIN_VIEW_MODE_ADMIN
+
     # === USER STATISTICS ===
     total_users = User.objects.filter(is_active=True).count()
     new_users_this_month = User.objects.filter(
@@ -1156,6 +1184,7 @@ def admin_dashboard_page(request):
         'completion_trend': completion_trend,
         'difficulty_stats': list(difficulty_stats),
         'recent_activities': recent_activities,
+        'admin_view_mode': request.session.get(ADMIN_VIEW_SESSION_KEY, ADMIN_VIEW_MODE_ADMIN),
     }
     
     return render(request, "accounts/admin_dashboard.html", context)

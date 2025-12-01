@@ -25,6 +25,19 @@
 
             <!-- RIGHT: Profile or Auth Buttons -->
             <div class="flex items-center space-x-4">
+                {% if user.is_superuser %}
+                    {% if request.session.admin_view_mode == 'user' %}
+                        <a href="{% url 'switch_admin_view_mode' %}?mode=admin&next={% url 'admin_dashboard_page' %}"
+                           class="hidden sm:inline-flex px-3 py-1 text-xs font-semibold rounded-full border border-pink-500/60 text-pink-300 hover:bg-pink-500/10">
+                            Exit User View
+                        </a>
+                    {% else %}
+                        <a href="{% url 'switch_admin_view_mode' %}?mode=user&next={% url 'challenges_page' %}"
+                           class="hidden sm:inline-flex px-3 py-1 text-xs font-semibold rounded-full border border-green-500/60 text-green-300 hover:bg-green-500/10">
+                            View Site as User
+                        </a>
+                    {% endif %}
+                {% endif %}
                 {% if user.is_authenticated %}
                     <!-- Profile Dropdown -->
                     <div class="relative z-50">
@@ -46,6 +59,13 @@
 
                         <!-- Dropdown -->
                         <div id="userDropdown" class="absolute right-0 mt-2 w-48 bg-gray-800 rounded-md shadow-lg hidden overflow-hidden border border-gray-700">
+                            {% if user.is_superuser %}
+                            <a href="{% url 'switch_admin_view_mode' %}?mode=admin&next={% url 'admin_dashboard_page' %}"
+                               class="block px-4 py-3 text-gray-300 hover:bg-gray-700 hover:text-white">
+                                Admin Dashboard
+                            </a>
+                            <div class="h-px bg-gray-700"></div>
+                            {% endif %}
                             <a href="{% url 'profile_page' %}" class="block px-4 py-3 text-gray-300 hover:bg-gray-700 hover:text-white">
                                 Profile
                             </a>
