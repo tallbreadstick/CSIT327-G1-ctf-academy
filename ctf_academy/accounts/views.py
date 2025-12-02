@@ -75,9 +75,10 @@ class ProtectedDataView(APIView):
 # ========== HTML PAGE VIEWS (Unchanged but with protection examples) ==========
 
 def home_page(request):
-    if request.user.is_authenticated and request.user.is_superuser:
+    view_as_user = request.session.get("view_as_user", False)
+    if request.user.is_authenticated and request.user.is_superuser and not view_as_user:
         return redirect("admin_dashboard_page")
-    return render(request, "accounts/home.html")
+    return render(request, "accounts/home.html", {"view_as_user": view_as_user})
 
 def about_page(request):
     return render(request, "accounts/about.html")
@@ -141,6 +142,26 @@ def logout_page(request):
 
 def is_admin(user):
     return user.is_superuser
+
+
+@login_required
+@user_passes_test(is_admin)
+def enter_user_view(request):
+    if request.method != "POST":
+        return HttpResponseBadRequest("POST required")
+    request.session["view_as_user"] = True
+    messages.info(request, "User view enabled. Use the navigation bar to return to admin mode.")
+    return redirect("home")
+
+
+@login_required
+@user_passes_test(is_admin)
+def exit_user_view(request):
+    if request.method != "POST":
+        return HttpResponseBadRequest("POST required")
+    request.session.pop("view_as_user", None)
+    messages.info(request, "Returned to the admin dashboard.")
+    return redirect("admin_dashboard_page")
 
 
 
