@@ -956,32 +956,35 @@ def admin_dashboard_page(request):
     """Enhanced admin dashboard with comprehensive analytics"""
     
     # === USER STATISTICS ===
-    total_users = User.objects.filter(is_active=True).count()
+    # Base statistics on what's actually stored in the DB (no is_active filter)
+    total_users = User.objects.count()
     new_users_this_month = User.objects.filter(
         date_joined__gte=timezone.now() - timedelta(days=30)
     ).count()
     
-    # Top performers (most points)
-    top_users = []
-    for user in User.objects.filter(is_active=True)[:10]:
-        completed = ChallengeProgress.objects.filter(
-            user=user, 
-            status=ChallengeProgress.Status.COMPLETED
+    # Top performers (most points) — compute correctly using aggregation across all active users
+    # Use conditional aggregation so we only sum points for COMPLETED progress
+    annotated_users = User.objects.filter(is_active=True).annotate(
+        points=Sum(
+            'challenge_progress__challenge__points',
+            filter=Q(challenge_progress__status=ChallengeProgress.Status.COMPLETED)
+        ),
+        completed_count=Count(
+            'challenge_progress',
+            filter=Q(challenge_progress__status=ChallengeProgress.Status.COMPLETED)
         )
-        total_points = completed.aggregate(
-            points=Sum('challenge__points')
-        )['points'] or 0
-        
+    ).order_by('-points')[:5]
+
+    # Normalize results into small dicts for template use and handle None values
+    top_users = []
+    for u in annotated_users:
         top_users.append({
-            'username': user.username,
-            'email': user.email,
-            'points': total_points,
-            'completed_count': completed.count(),
-            'date_joined': user.date_joined
+            'username': u.username,
+            'email': u.email,
+            'points': int(u.points or 0),
+            'completed_count': int(u.completed_count or 0),
+            'date_joined': u.date_joined
         })
-    
-    top_users.sort(key=lambda x: x['points'], reverse=True)
-    top_users = top_users[:5]
     
     # === CHALLENGE STATISTICS ===
     total_challenges = Challenge.objects.filter(is_active=True).count()
@@ -1047,18 +1050,24 @@ def admin_dashboard_page(request):
         count=Count('id')
     ).order_by('day')
     
-    # Format for chart
+    # Format for chart and compute total completions (last 30 days)
     completion_trend = [
         {'date': item['day'].strftime('%Y-%m-%d'), 'count': item['count']}
         for item in daily_completions
     ]
+
+    # Total completions in the last 30 days (sum of daily counts)
+    completions_30d = sum(item['count'] for item in daily_completions) if daily_completions else 0
     
     # === DIFFICULTY DISTRIBUTION ===
-    difficulty_stats = Challenge.objects.filter(
-        is_active=True
-    ).values('difficulty').annotate(
-        count=Count('id')
-    ).order_by('difficulty')
+    difficulty_qs = Challenge.objects.filter(is_active=True).values('difficulty').annotate(count=Count('id')).order_by('difficulty')
+
+    # Compute percent of total challenges for each difficulty
+    difficulty_stats = []
+    total = total_challenges or 0
+    for d in difficulty_qs:
+        pct = round((d['count'] / total * 100), 1) if total > 0 else 0
+        difficulty_stats.append({'difficulty': d['difficulty'], 'count': d['count'], 'percent': pct})
     
     # === RECENT ACTIVITY ===
     recent_progress = ChallengeProgress.objects.select_related(
@@ -1084,6 +1093,7 @@ def admin_dashboard_page(request):
         'avg_completion_rate': avg_completion_rate,
         'popular_challenges': popular_challenges,
         'completion_trend': completion_trend,
+        'completions_30d': completions_30d,
         'difficulty_stats': list(difficulty_stats),
         'recent_activities': recent_activities,
     }
@@ -1110,13 +1120,12 @@ def admin_users_page(request):
     
     # Active users (logged in within last 7 days)
     seven_days_ago = timezone.now() - timedelta(days=7)
-    active_users = User.objects.filter(
-        is_active=True,
-        last_login__gte=seven_days_ago
-    ).count()
+    # Active users = users who logged in during the last 7 days (include all records)
+    active_users = User.objects.filter(last_login__gte=seven_days_ago).count()
     
     # Admin users count
-    admin_users = User.objects.filter(is_active=True, is_staff=True).count()
+    # Count staff accounts directly from the DB (include inactive if present)
+    admin_users = User.objects.filter(is_staff=True).count()
     
     # New users this month
     thirty_days_ago = timezone.now() - timedelta(days=30)
