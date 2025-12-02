@@ -1116,16 +1116,15 @@ def admin_users_page(request):
     from django.utils import timezone
     
     # === USER STATISTICS ===
-    total_users = User.objects.filter(is_active=True).count()
+    # Total users should reflect what's in the DB (all accounts)
+    total_users = User.objects.count()
     
     # Active users (logged in within last 7 days)
     seven_days_ago = timezone.now() - timedelta(days=7)
     # Active users = users who logged in during the last 7 days (include all records)
     active_users = User.objects.filter(last_login__gte=seven_days_ago).count()
     
-    # Admin users count
-    # Count staff accounts directly from the DB (include inactive if present)
-    admin_users = User.objects.filter(is_staff=True).count()
+    # Admin users stat removed — do not compute it
     
     # New users this month
     thirty_days_ago = timezone.now() - timedelta(days=30)
@@ -1178,8 +1177,9 @@ def admin_users_page(request):
     
     context = {
         'total_users': total_users,
+        # Average completed challenges per user (use DB totals)
+        'avg_completed_per_user': round((ChallengeProgress.objects.filter(status=ChallengeProgress.Status.COMPLETED).count() / total_users), 1) if total_users > 0 else 0,
         'active_users': active_users,
-        'admin_users': admin_users,
         'new_users_this_month': new_users_this_month,
         'growth_percentage': growth_percentage,
         'users': users_list,
