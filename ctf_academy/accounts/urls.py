@@ -6,6 +6,8 @@ from .views import (
     about_page,
     logout_page,
     admin_dashboard_page,
+    enter_user_view,
+    exit_user_view,
     profile_page,
     MyTokenObtainPairView,
     challenges_page,
@@ -44,6 +46,8 @@ urlpatterns = [
     path("register", register_page, name="register_page"),
     path("login", login_page, name="login_page"),
     path("logout", logout_page, name="logout_page"),
+    path("admin/user-view/enter/", enter_user_view, name="enter_user_view"),
+    path("admin/user-view/exit/", exit_user_view, name="exit_user_view"),
     path("about/", about_page, name="about_page"),
     
     path("profile/", profile_page, name="profile_page"),

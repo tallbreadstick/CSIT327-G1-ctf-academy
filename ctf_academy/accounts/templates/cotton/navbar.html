@@ -13,7 +13,7 @@
 
             <!-- CENTER: Page Links -->
             <div class="hidden md:flex items-center space-x-8">
-                {% if user.is_superuser %}
+                {% if user.is_superuser and not request.session.view_as_user %}
                 <a href="{% url 'admin_dashboard_page' %}" class="text-pink-400 font-semibold hover:text-pink-300">Home</a>
                 {% else %}
                 <a href="{% url 'home' %}" class="text-gray-300 hover:text-pink-300">Home</a>
@@ -46,6 +46,15 @@
 
                         <!-- Dropdown -->
                         <div id="userDropdown" class="absolute right-0 mt-2 w-48 bg-gray-800 rounded-md shadow-lg hidden overflow-hidden border border-gray-700">
+                            {% if user.is_superuser and request.session.view_as_user %}
+                            <form method="post" action="{% url 'exit_user_view' %}">
+                                {% csrf_token %}
+                                <button type="submit" class="w-full text-left px-4 py-3 text-yellow-300 hover:bg-gray-700 hover:text-white font-semibold">
+                                    Return to Admin
+                                </button>
+                            </form>
+                            <hr class="border-gray-700">
+                            {% endif %}
                             <a href="{% url 'profile_page' %}" class="block px-4 py-3 text-gray-300 hover:bg-gray-700 hover:text-white">
                                 Profile
                             </a>

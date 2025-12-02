@@ -1,316 +1,148 @@
 {% load static %}
-<!-- Floating Chatbot Component -->
-<div id="chatbot-container" class="fixed bottom-4 right-4 z-[9999]">
-    <!-- Chatbot Window (Hidden by default) -->
-    <div id="chatbot-window" class="hidden mb-4 bg-gray-800 rounded-2xl shadow-2xl flex flex-col overflow-hidden border border-pink-500/30" style="width: 450px; height: 600px;">
-        <!-- Header -->
-        <div class="bg-gradient-to-r from-pink-600 to-pink-700 px-4 py-3 flex items-center justify-between flex-shrink-0">
-            <div class="flex items-center space-x-2">
-                <img src="{% static 'accounts/images/logo.png' %}" alt="AI" class="h-8 w-8 rounded-full">
-                <div>
-                    <h3 class="text-white font-semibold text-sm">CTF AI Assistant</h3>
-                    <p class="text-pink-100 text-xs">Ask me anything!</p>
-                </div>
-            </div>
-            <button id="chatbot-close" class="text-white hover:text-pink-200 transition">
-                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                    <path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd" />
-                </svg>
-            </button>
-        </div>
+<!-- Chatbot Floating Button + Popup -->
+<button id="ctf-chatbot-toggle"
+   type="button"
+   class="fixed bottom-4 right-4 bg-pink-600 hover:bg-pink-700 text-white rounded-full p-4 shadow-2xl 
+          transition-transform hover:scale-110 z-[9999] group animate-pulse-slow">
 
-        <!-- Messages Area -->
-        <div id="chatbot-messages" class="overflow-y-auto p-4 space-y-3 bg-gray-900 flex-1" style="min-height: 0;">
-            <!-- Welcome Message -->
-            <div class="flex items-start space-x-2">
-                <div class="h-6 w-6 rounded-full bg-gradient-to-br from-pink-500 to-pink-600 flex items-center justify-center flex-shrink-0">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-white" viewBox="0 0 20 20" fill="currentColor">
-                        <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd" />
-                    </svg>
-                </div>
-                <div class="bg-gray-800 rounded-2xl px-3 py-2 max-w-[85%] border border-gray-700">
-                    <p class="text-gray-100 text-sm">
-                        👋 Hey! I'm your CTF Academy AI assistant. I can help with:
-                    </p>
-                    <ul class="mt-2 text-gray-300 text-xs space-y-1">
-                        <li>• Cybersecurity concepts & techniques</li>
-                        <li>• CTF challenge tips & hints</li>
-                        <li>• Platform features & navigation</li>
-                        <li>• Offensive security questions</li>
-                    </ul>
-                    <p class="mt-2 text-gray-400 text-xs">Try asking me something or use the quick questions below!</p>
-                </div>
-            </div>
-        </div>
+    <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8" fill="none"
+         viewBox="0 0 24 24" stroke="currentColor">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+              d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />
+    </svg>
 
-        <!-- Quick Actions -->
-        <div class="px-4 py-2 bg-gray-800/50 border-t border-gray-700 flex-shrink-0">
-            <div class="flex flex-wrap gap-2">
-                <button class="chatbot-quick-question text-xs bg-gray-700 hover:bg-gray-600 px-3 py-1 rounded-full transition">
-                    SQL injection basics
-                </button>
-                <button class="chatbot-quick-question text-xs bg-gray-700 hover:bg-gray-600 px-3 py-1 rounded-full transition">
-                    How do leaderboards work?
-                </button>
-            </div>
-        </div>
+    <span class="absolute right-full mr-3 top-1/2 -translate-y-1/2 bg-gray-800 text-white px-3 py-2 
+                 rounded-lg text-sm whitespace-nowrap opacity-0 group-hover:opacity-100 
+                 transition-opacity pointer-events-none">
+        Ask our AI Assistant
+    </span>
 
-        <!-- Input Area -->
-        <div class="p-4 bg-gray-800 border-t border-gray-700 flex-shrink-0">
-            <div class="flex items-center space-x-2">
-                <input 
-                    type="text" 
-                    id="chatbot-input" 
-                    placeholder="Type your message..."
-                    class="flex-1 bg-gray-700 text-white text-sm rounded-full px-4 py-2 focus:outline-none focus:ring-2 focus:ring-pink-500"
-                    autocomplete="off"
-                >
-                <button 
-                    id="chatbot-send"
-                    class="bg-pink-600 hover:bg-pink-700 text-white rounded-full p-2 transition disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                        <path d="M10.894 2.553a1 1 0 00-1.788 0l-7 14a1 1 0 001.169 1.409l5-1.429A1 1 0 009 15.571V11a1 1 0 112 0v4.571a1 1 0 00.725.962l5 1.428a1 1 0 001.17-1.408l-7-14z" />
-                    </svg>
-                </button>
+    <span class="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full h-5 w-5 
+                 flex items-center justify-center animate-pulse">
+        AI
+    </span>
+</button>
+
+<!-- Popup Panel -->
+<div id="ctf-chatbot-panel" class="fixed inset-0 z-[10000] pointer-events-none">
+    <div id="ctf-chatbot-sheet" class="absolute inset-y-0 right-0 w-full max-w-xl bg-gray-900 shadow-2xl border-l border-gray-800 transform translate-x-full transition-transform duration-300 pointer-events-auto">
+        <button id="ctf-chatbot-close" type="button" class="absolute top-4 right-4 text-gray-400 hover:text-white">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+            </svg>
+        </button>
+
+        <div class="px-6 pt-8 pb-6 h-full overflow-y-auto">
+            <div class="text-center mb-6">
+                <h2 class="text-3xl font-extrabold text-white">CTF Academy AI Assistant</h2>
+                <p class="text-gray-400">Ask about cybersecurity, CTF challenges, or how to use the platform.</p>
             </div>
-            
-            <!-- Loading Indicator -->
-            <div id="chatbot-loading" class="hidden mt-2 flex items-center space-x-2">
-                <div class="animate-bounce bg-pink-500 rounded-full h-1.5 w-1.5"></div>
-                <div class="animate-bounce bg-pink-500 rounded-full h-1.5 w-1.5" style="animation-delay: 0.1s;"></div>
-                <div class="animate-bounce bg-pink-500 rounded-full h-1.5 w-1.5" style="animation-delay: 0.2s;"></div>
-                <span class="text-gray-400 text-xs ml-2">Thinking...</span>
+
+            <div class="bg-gray-800 rounded-2xl p-4">
+                <div id="ctf-chat-messages" class="h-96 overflow-y-auto space-y-4 px-1">
+                    <div class="flex items-start space-x-3">
+                        <div class="flex-shrink-0">
+                            <img src="{% static 'accounts/images/logo.png' %}" alt="Bot" class="h-8 w-8 rounded-full">
+                        </div>
+                        <div class="rounded-2xl px-4 py-3 max-w-[80%] bg-gray-900 border border-gray-700">
+                            <p class="text-gray-100">
+                                👋 Hey there! I'm your CTF Academy assistant. I can help you with:
+                            </p>
+                            <ul class="mt-2 text-gray-300 text-sm space-y-1">
+                                <li>• Cybersecurity concepts and techniques</li>
+                                <li>• Tips for solving CTF challenges</li>
+                                <li>• Platform features and navigation</li>
+                                <li>• General offensive security questions</li>
+                            </ul>
+                            <p class="mt-2 text-gray-300 text-sm">What would you like to know?</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="mt-4 flex items-center space-x-3">
+                    <input type="text" id="ctf-chat-input" placeholder="Type your message here..."
+                        class="flex-1 bg-gray-700 text-white rounded-full px-5 py-3 focus:outline-none focus:ring-2 focus:ring-pink-500" autocomplete="off">
+                    <button id="ctf-chat-send" class="bg-pink-600 hover:bg-pink-700 text-white rounded-full px-6 py-3 font-semibold transition disabled:opacity-50 disabled:cursor-not-allowed">
+                        Send
+                    </button>
+                </div>
+
+                <div id="ctf-chat-loading" class="hidden mt-3 flex items-center justify-center space-x-2 text-gray-400">
+                    <div class="animate-bounce bg-pink-500 rounded-full h-2 w-2"></div>
+                    <div class="animate-bounce bg-pink-500 rounded-full h-2 w-2" style="animation-delay:0.1s;"></div>
+                    <div class="animate-bounce bg-pink-500 rounded-full h-2 w-2" style="animation-delay:0.2s;"></div>
+                    <span class="text-sm ml-2">Thinking...</span>
+                </div>
+
+                <div class="mt-4 flex flex-wrap gap-2" id="ctf-chat-quick">
+                    <button class="ctf-quick-question bg-gray-700 hover:bg-gray-600 text-sm px-4 py-2 rounded-full transition">
+                        How do I start my first CTF challenge?
+                    </button>
+                    <button class="ctf-quick-question bg-gray-700 hover:bg-gray-600 text-sm px-4 py-2 rounded-full transition">
+                        What is SQL injection?
+                    </button>
+                    <button class="ctf-quick-question bg-gray-700 hover:bg-gray-600 text-sm px-4 py-2 rounded-full transition">
+                        How do leaderboards work?
+                    </button>
+                </div>
             </div>
         </div>
     </div>
-
-    <!-- Floating Button -->
-    <button id="chatbot-toggle" 
-            class="bg-red-500 hover:bg-red-600 text-white rounded-full p-4 shadow-2xl 
-                   transition-all hover:scale-110 group animate-pulse-slow">
-        <svg xmlns="http://www.w3.org/2000/svg" class="h-7 w-7" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
-            <circle cx="9" cy="10" r="0.5" fill="white" stroke="none"/>
-            <circle cx="12" cy="10" r="0.5" fill="white" stroke="none"/>
-            <circle cx="15" cy="10" r="0.5" fill="white" stroke="none"/>
-            <line x1="9" y1="10" x2="9.01" y2="10" stroke-width="2"/>
-            <line x1="12" y1="10" x2="12.01" y2="10" stroke-width="2"/>
-            <line x1="15" y1="10" x2="15.01" y2="10" stroke-width="2"/>
-        </svg>
-
-        <span class="absolute right-full mr-3 top-1/2 -translate-y-1/2 bg-gray-800 text-white px-3 py-2 
-                     rounded-lg text-sm whitespace-nowrap opacity-0 group-hover:opacity-100 
-                     transition-opacity pointer-events-none shadow-lg">
-            Ask our AI Assistant
-        </span>
-
-        <span class="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full h-5 w-5 
-                     flex items-center justify-center animate-pulse">
-            AI
-        </span>
-    </button>
+    </div>
 </div>
 
 <style>
 @keyframes pulse-slow {
-    0%, 100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7); }
-    50% { box-shadow: 0 0 0 15px rgba(239, 68, 68, 0); }
+    0%, 100% { box-shadow: 0 0 0 0 rgba(236, 72, 153, 0.7); }
+    50% { box-shadow: 0 0 0 15px rgba(236, 72, 153, 0); }
 }
 .animate-pulse-slow {
     animation: pulse-slow 2s infinite;
 }
-
-@keyframes slideUp {
-    from {
-        opacity: 0;
-        transform: translateY(20px) scale(0.95);
-    }
-    to {
-        opacity: 1;
-        transform: translateY(0) scale(1);
-    }
-}
-
-.chat-window-enter {
-    animation: slideUp 0.3s ease-out forwards;
-}
-
-@keyframes slideDown {
-    from {
-        opacity: 1;
-        transform: translateY(0) scale(1);
-    }
-    to {
-        opacity: 0;
-        transform: translateY(20px) scale(0.95);
-    }
-}
-
-.chat-window-exit {
-    animation: slideDown 0.2s ease-in forwards;
-}
-
-@keyframes fadeInUp {
-    from {
-        opacity: 0;
-        transform: translateY(10px);
-    }
-    to {
-        opacity: 1;
-        transform: translateY(0);
-    }
-}
-
-.message-enter {
-    animation: fadeInUp 0.4s ease-out;
-}
-
-@keyframes typingDot {
-    0%, 60%, 100% {
-        transform: translateY(0);
-    }
-    30% {
-        transform: translateY(-10px);
-    }
-}
-
-.typing-indicator {
-    display: inline-block;
-    animation: typingDot 1.4s infinite;
-}
-
-.typing-indicator:nth-child(2) {
-    animation-delay: 0.2s;
-}
-
-.typing-indicator:nth-child(3) {
-    animation-delay: 0.4s;
+#ctf-chatbot-panel::-webkit-scrollbar {
+    width: 0;
 }
 </style>
 
 <script>
 (function() {
-    const container = document.getElementById('chatbot-container');
-    const window = document.getElementById('chatbot-window');
-    const toggle = document.getElementById('chatbot-toggle');
-    const close = document.getElementById('chatbot-close');
-    const messages = document.getElementById('chatbot-messages');
-    const input = document.getElementById('chatbot-input');
-    const sendBtn = document.getElementById('chatbot-send');
-    const loading = document.getElementById('chatbot-loading');
-    const quickQuestions = document.querySelectorAll('.chatbot-quick-question');
+    if (window.ctfChatbotInitialized) return;
+    window.ctfChatbotInitialized = true;
 
-    // Session storage keys
-    const STORAGE_KEY = 'ctf_chatbot_history';
-    const WINDOW_STATE_KEY = 'ctf_chatbot_window_state';
+    const toggleBtn = document.getElementById('ctf-chatbot-toggle');
+    const panel = document.getElementById('ctf-chatbot-panel');
+    const closeBtn = document.getElementById('ctf-chatbot-close');
+    const sheet = document.getElementById('ctf-chatbot-sheet');
+    const chatMessages = document.getElementById('ctf-chat-messages');
+    const userInput = document.getElementById('ctf-chat-input');
+    const sendBtn = document.getElementById('ctf-chat-send');
+    const loading = document.getElementById('ctf-chat-loading');
+    const quickQuestions = document.querySelectorAll('.ctf-quick-question');
 
-    // Load chat history from session storage
-    function loadChatHistory() {
-        try {
-            const history = sessionStorage.getItem(STORAGE_KEY);
-            if (history) {
-                const chatHistory = JSON.parse(history);
-                // Clear existing messages except welcome message
-                const welcomeMsg = messages.querySelector('.flex.items-start.space-x-2');
-                messages.innerHTML = '';
-                if (welcomeMsg) {
-                    messages.appendChild(welcomeMsg);
-                }
-                // Restore messages - they will be properly formatted by addMessage
-                chatHistory.forEach(msg => {
-                    addMessageFromHistory(msg.content, msg.isUser, msg.isFormatted);
-                });
-            }
-        } catch (error) {
-            console.error('Failed to load chat history:', error);
-        }
+    function openPanel() {
+        panel.classList.remove('pointer-events-none');
+        sheet.classList.remove('translate-x-full');
+        userInput.focus();
     }
 
-    // Save chat history to session storage
-    function saveChatHistory() {
-        try {
-            const messageElements = messages.querySelectorAll('.flex.items-start');
-            const history = [];
-            
-            messageElements.forEach(el => {
-                // Skip the welcome message and typing indicator
-                if (el.querySelector('.text-gray-400') || el.id === 'typing-indicator') return;
-                
-                const isUser = el.classList.contains('justify-end');
-                const textEl = el.querySelector('p');
-                if (textEl) {
-                    // Store innerHTML for AI messages (formatted), textContent for user messages
-                    history.push({
-                        content: isUser ? textEl.textContent : textEl.innerHTML,
-                        isUser: isUser,
-                        isFormatted: !isUser
-                    });
-                }
-            });
-            
-            sessionStorage.setItem(STORAGE_KEY, JSON.stringify(history));
-        } catch (error) {
-            console.error('Failed to save chat history:', error);
-        }
+    function closePanel() {
+        sheet.classList.add('translate-x-full');
+        panel.classList.add('pointer-events-none');
     }
 
-    // Load window state
-    function loadWindowState() {
-        try {
-            const state = sessionStorage.getItem(WINDOW_STATE_KEY);
-            if (state === 'open') {
-                window.classList.remove('hidden');
-                toggle.classList.add('hidden');
-            }
-        } catch (error) {
-            console.error('Failed to load window state:', error);
+    toggleBtn.addEventListener('click', openPanel);
+    closeBtn.addEventListener('click', closePanel);
+    panel.addEventListener('click', (e) => {
+        if (e.target === panel) {
+            closePanel();
         }
-    }
-
-    // Save window state
-    function saveWindowState(isOpen) {
-        try {
-            sessionStorage.setItem(WINDOW_STATE_KEY, isOpen ? 'open' : 'closed');
-        } catch (error) {
-            console.error('Failed to save window state:', error);
-        }
-    }
-
-    // Initialize - load saved state
-    loadChatHistory();
-    loadWindowState();
-
-    // Toggle chatbot window
-    toggle.addEventListener('click', () => {
-        const isHidden = window.classList.contains('hidden');
-        if (isHidden) {
-            window.classList.remove('hidden');
-            window.classList.add('chat-window-enter');
-            toggle.classList.add('hidden');
-            saveWindowState(true);
-            input.focus();
-            
-            // Remove animation class after it completes
-            setTimeout(() => {
-                window.classList.remove('chat-window-enter');
-            }, 300);
+    });
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape' && !sheet.classList.contains('translate-x-full')) {
+            closePanel();
         }
     });
 
-    // Close chatbot
-    close.addEventListener('click', () => {
-        window.classList.add('chat-window-exit');
-        
-        setTimeout(() => {
-            window.classList.add('hidden');
-            window.classList.remove('chat-window-exit');
-            toggle.classList.remove('hidden');
-            saveWindowState(false);
-        }, 200);
-    });
-
-    // Get CSRF token
     function getCookie(name) {
         let cookieValue = null;
         if (document.cookie && document.cookie !== '') {
@@ -339,102 +171,38 @@
         return text;
     }
 
-    function addMessage(content, isUser, shouldSave = true) {
-        const messageDiv = document.createElement('div');
-        messageDiv.className = 'flex items-start space-x-2 message-enter ' + (isUser ? 'justify-end' : '');
-        
+    function addMessage(content, isUser) {
+        const wrapper = document.createElement('div');
+        wrapper.className = 'flex items-start space-x-3 ' + (isUser ? 'justify-end' : '');
+
         if (isUser) {
-            messageDiv.innerHTML = `
-                <div class="bg-gradient-to-r from-pink-600 to-pink-700 rounded-2xl px-3 py-2 max-w-[85%]">
-                    <p class="text-white text-sm">${escapeHtml(content)}</p>
+            wrapper.innerHTML = `
+                <div class="rounded-2xl px-4 py-3 max-w-[80%] bg-gradient-to-br from-pink-500 to-pink-700">
+                    <p class="text-white">${escapeHtml(content)}</p>
                 </div>
             `;
         } else {
-            messageDiv.innerHTML = `
-                <div class="h-6 w-6 rounded-full bg-gradient-to-br from-pink-500 to-pink-600 flex items-center justify-center flex-shrink-0">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-white" viewBox="0 0 20 20" fill="currentColor">
-                        <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd" />
-                    </svg>
+            wrapper.innerHTML = `
+                <div class="flex-shrink-0">
+                    <img src="{% static 'accounts/images/logo.png' %}" alt="Bot" class="h-8 w-8 rounded-full">
                 </div>
-                <div class="bg-gray-800 rounded-2xl px-3 py-2 max-w-[85%] border border-gray-700">
-                    <p class="text-gray-100 text-sm">${formatMessage(content)}</p>
+                <div class="rounded-2xl px-4 py-3 max-w-[80%] bg-gray-900 border border-gray-700">
+                    <p class="text-gray-100">${formatMessage(content)}</p>
                 </div>
             `;
         }
-        
-        messages.appendChild(messageDiv);
-        messages.scrollTop = messages.scrollHeight;
-        
-        // Save to session storage
-        if (shouldSave) {
-            saveChatHistory();
-        }
-    }
 
-    function addMessageFromHistory(content, isUser, isFormatted) {
-        const messageDiv = document.createElement('div');
-        messageDiv.className = 'flex items-start space-x-2 ' + (isUser ? 'justify-end' : '');
-        
-        if (isUser) {
-            messageDiv.innerHTML = `
-                <div class="bg-gradient-to-r from-pink-600 to-pink-700 rounded-2xl px-3 py-2 max-w-[85%]">
-                    <p class="text-white text-sm">${escapeHtml(content)}</p>
-                </div>
-            `;
-        } else {
-            messageDiv.innerHTML = `
-                <div class="h-6 w-6 rounded-full bg-gradient-to-br from-pink-500 to-pink-600 flex items-center justify-center flex-shrink-0">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-white" viewBox="0 0 20 20" fill="currentColor">
-                        <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd" />
-                    </svg>
-                </div>
-                <div class="bg-gray-800 rounded-2xl px-3 py-2 max-w-[85%] border border-gray-700">
-                    <p class="text-gray-100 text-sm">${isFormatted ? content : formatMessage(content)}</p>
-                </div>
-            `;
-        }
-        
-        messages.appendChild(messageDiv);
-        messages.scrollTop = messages.scrollHeight;
-    }
-
-    function addTypingIndicator() {
-        const typingDiv = document.createElement('div');
-        typingDiv.id = 'typing-indicator';
-        typingDiv.className = 'flex items-start space-x-2 message-enter';
-        typingDiv.innerHTML = `
-            <div class="h-6 w-6 rounded-full bg-gradient-to-br from-pink-500 to-pink-600 flex items-center justify-center flex-shrink-0">
-                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-white" viewBox="0 0 20 20" fill="currentColor">
-                    <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd" />
-                </svg>
-            </div>
-            <div class="bg-gray-800 rounded-2xl px-4 py-3 border border-gray-700 flex items-center space-x-1">
-                <div class="typing-indicator w-2 h-2 bg-pink-500 rounded-full"></div>
-                <div class="typing-indicator w-2 h-2 bg-pink-500 rounded-full"></div>
-                <div class="typing-indicator w-2 h-2 bg-pink-500 rounded-full"></div>
-            </div>
-        `;
-        messages.appendChild(typingDiv);
-        messages.scrollTop = messages.scrollHeight;
-    }
-
-    function removeTypingIndicator() {
-        const typingDiv = document.getElementById('typing-indicator');
-        if (typingDiv) {
-            typingDiv.remove();
-        }
+        chatMessages.appendChild(wrapper);
+        chatMessages.scrollTop = chatMessages.scrollHeight;
     }
 
     async function sendMessage(message) {
         if (!message.trim()) return;
 
         addMessage(message, true);
-        input.value = '';
+        userInput.value = '';
         sendBtn.disabled = true;
         loading.classList.remove('hidden');
-        
-        // Add typing indicator
-        addTypingIndicator();
 
         try {
             const response = await fetch('{% url "chatbot_api" %}', {
@@ -443,52 +211,31 @@
                     'Content-Type': 'application/json',
                     'X-CSRFToken': getCookie('csrftoken')
                 },
-                body: JSON.stringify({ message: message })
+                body: JSON.stringify({ message })
             });
 
             const data = await response.json();
-            console.log('Chatbot API response:', data);
-
-            // Remove typing indicator before showing response
-            removeTypingIndicator();
-
-            // Handle the nested response format: {success: true, data: {response: "..."}}
-            if (data.success && data.data && data.data.response) {
-                addMessage(data.data.response, false);
-            } else if (data.ok && data.data && data.data.response) {
-                addMessage(data.data.response, false);
-            } else if (data.response) {
+            if (data.success) {
                 addMessage(data.response, false);
             } else {
-                console.error('Unexpected response format:', data);
                 addMessage('Sorry, I encountered an error. Please try again.', false);
             }
-        } catch (error) {
-            console.error('Chatbot error:', error);
-            removeTypingIndicator();
+        } catch (err) {
+            console.error(err);
             addMessage('Sorry, something went wrong. Please try again.', false);
         } finally {
             loading.classList.add('hidden');
             sendBtn.disabled = false;
-            input.focus();
+            userInput.focus();
         }
     }
 
-    // Event listeners
-    sendBtn.addEventListener('click', () => {
-        sendMessage(input.value);
-    });
-
-    input.addEventListener('keypress', (e) => {
+    sendBtn.addEventListener('click', () => sendMessage(userInput.value));
+    userInput.addEventListener('keypress', (e) => {
         if (e.key === 'Enter') {
-            sendMessage(input.value);
+            sendMessage(userInput.value);
         }
     });
-
-    quickQuestions.forEach(btn => {
-        btn.addEventListener('click', () => {
-            sendMessage(btn.textContent.trim());
-        });
-    });
+    quickQuestions.forEach(btn => btn.addEventListener('click', () => sendMessage(btn.textContent)));
 })();
 </script>
