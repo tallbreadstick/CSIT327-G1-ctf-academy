@@ -1023,6 +1023,12 @@ def admin_dashboard_page(request):
     
     # Sort by completion rate
     challenges_with_stats.sort(key=lambda x: x['completion_rate'], reverse=True)
+
+    # Compute average completion rate across all challenges.
+    # Use a weighted average based on attempts so low-attempt challenges don't skew the number.
+    total_completed = sum(c['completed'] for c in challenges_with_stats)
+    total_attempts = sum((c['completed'] + c['in_progress'] + c['attempted']) for c in challenges_with_stats)
+    avg_completion_rate = round((total_completed / total_attempts * 100), 1) if total_attempts > 0 else 0
     
     # Most popular (favorited) challenges
     popular_challenges = Challenge.objects.annotate(
@@ -1075,6 +1081,7 @@ def admin_dashboard_page(request):
         'total_challenges': total_challenges,
         'top_users': top_users,
         'challenges_with_stats': challenges_with_stats[:10],
+        'avg_completion_rate': avg_completion_rate,
         'popular_challenges': popular_challenges,
         'completion_trend': completion_trend,
         'difficulty_stats': list(difficulty_stats),

@@ -151,8 +151,8 @@
                         </svg>
                     </div>
                     <p class="text-3xl font-bold text-white">
-                        {% if challenges_with_stats %}
-                            {{ challenges_with_stats.0.completion_rate }}%
+                        {% if avg_completion_rate is not None %}
+                            {{ avg_completion_rate }}%
                         {% else %}
                             0%
                         {% endif %}
